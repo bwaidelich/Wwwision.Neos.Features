@@ -37,6 +37,11 @@
             "Wwwision\\Neos\\Features\\": "Classes/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Wwwision\\Neos\\Features\\Tests\\": "Tests/"
+        }
+    },
     "config": {
         "sort-packages": true,
         "allow-plugins": {

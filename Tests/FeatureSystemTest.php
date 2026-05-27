@@ -1,0 +1,202 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Wwwision\Neos\Features\Tests;
+
+use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+use Wwwision\Neos\Features\FeatureSystem;
+use Wwwision\Neos\Features\Model\Feature\Feature;
+use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
+use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
+use Wwwision\Neos\Features\Model\Feature\FeatureId;
+use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
+use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
+use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinitions;
+use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
+use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureDefinitions;
+use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureStates;
+use Wwwision\Neos\Features\Tests\Fixtures\SampleFeatureOptions;
+use Wwwision\Types\Exception\CoerceException;
+
+#[CoversClass(FeatureSystem::class)]
+final class FeatureSystemTest extends TestCase
+{
+    private InMemoryFeatureStates $states;
+
+    protected function setUp(): void
+    {
+        $this->states = new InMemoryFeatureStates();
+    }
+
+    /**
+     * @param array<FeatureDefinition<FeatureOptions>> $definitions
+     */
+    private function featureSystem(array $definitions): FeatureSystem
+    {
+        return new FeatureSystem(
+            new InMemoryFeatureDefinitions(FeatureDefinitions::fromArray($definitions)),
+            $this->states,
+        );
+    }
+
+    /**
+     * @param callable(FeatureOptions): FeatureActivateResult|null $onActivate
+     * @param callable(): FeatureDeactivateResult|null $onDeactivate
+     * @return FeatureDefinition<FeatureOptions>
+     */
+    private static function definition(
+        string $id,
+        string $optionsClassName = SampleFeatureOptions::class,
+        ?callable $onActivate = null,
+        ?callable $onDeactivate = null,
+    ): FeatureDefinition {
+        return FeatureDefinition::create(
+            id: $id,
+            name: ucfirst($id),
+            optionsClassName: $optionsClassName,
+            onActivate: $onActivate ?? static fn(FeatureOptions $o): FeatureActivateResult => FeatureActivateResult::success(),
+            onDeactivate: $onDeactivate ?? static fn(): FeatureDeactivateResult => FeatureDeactivateResult::success(),
+        );
+    }
+
+    public function test_getFeatures_returns_one_feature_per_definition(): void
+    {
+        $system = $this->featureSystem([self::definition('a'), self::definition('b')]);
+
+        $ids = array_map(static fn(Feature $f): string => $f->id->value, iterator_to_array($system->getFeatures()));
+
+        self::assertSame(['a', 'b'], $ids);
+    }
+
+    public function test_getFeatures_marks_features_without_state_as_inactive(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $feature = iterator_to_array($system->getFeatures())[0];
+
+        self::assertFalse($feature->active);
+        self::assertNull($feature->options);
+    }
+
+    public function test_getFeatures_reflects_stored_state_and_parses_its_options(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'stored', 'threshold' => 3]));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $feature = iterator_to_array($system->getFeatures())[0];
+
+        self::assertTrue($feature->active);
+        self::assertInstanceOf(SampleFeatureOptions::class, $feature->options);
+        self::assertSame('stored', $feature->options->message);
+        self::assertSame(3, $feature->options->threshold);
+    }
+
+    public function test_getFeature_returns_the_matching_feature(): void
+    {
+        $system = $this->featureSystem([self::definition('a'), self::definition('b')]);
+
+        self::assertSame('b', $system->getFeature(FeatureId::fromString('b'))->id->value);
+    }
+
+    public function test_getFeature_throws_for_an_unknown_feature(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $system->getFeature(FeatureId::fromString('missing'));
+    }
+
+    public function test_activateFeature_invokes_the_activate_callback_with_the_parsed_options(): void
+    {
+        $activatedWith = null;
+        $system = $this->featureSystem([
+            self::definition('a', onActivate: function (FeatureOptions $options) use (&$activatedWith): FeatureActivateResult {
+                $activatedWith = $options;
+                return FeatureActivateResult::success();
+            }),
+        ]);
+
+        $system->activateFeature(FeatureId::fromString('a'), ['message' => 'go', 'threshold' => 9]);
+
+        self::assertInstanceOf(SampleFeatureOptions::class, $activatedWith);
+        self::assertSame('go', $activatedWith->message);
+        self::assertSame(9, $activatedWith->threshold);
+    }
+
+    public function test_activateFeature_stores_an_active_state_with_normalized_options(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $system->activateFeature(FeatureId::fromString('a'), ['message' => 'go', 'threshold' => 9]);
+
+        $state = $this->states->loadAll()->get(FeatureId::fromString('a'));
+        self::assertNotNull($state);
+        self::assertTrue($state->active);
+        self::assertSame(['message' => 'go', 'threshold' => 9], $state->options);
+    }
+
+    public function test_activateFeature_throws_for_an_unknown_feature(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $system->activateFeature(FeatureId::fromString('missing'), []);
+    }
+
+    public function test_activateFeature_rejects_unrecognized_option_keys(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(CoerceException::class);
+        $system->activateFeature(FeatureId::fromString('a'), ['message' => 'go', 'bogus' => true]);
+    }
+
+    public function test_deactivateFeature_invokes_the_deactivate_callback(): void
+    {
+        $deactivated = false;
+        $system = $this->featureSystem([
+            self::definition('a', onDeactivate: function () use (&$deactivated): FeatureDeactivateResult {
+                $deactivated = true;
+                return FeatureDeactivateResult::success();
+            }),
+        ]);
+
+        $system->deactivateFeature(FeatureId::fromString('a'));
+
+        self::assertTrue($deactivated);
+    }
+
+    public function test_deactivateFeature_keeps_the_state_but_flips_active_to_false(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'stored']));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $system->deactivateFeature(FeatureId::fromString('a'));
+
+        $state = $this->states->loadAll()->get(FeatureId::fromString('a'));
+        self::assertNotNull($state);
+        self::assertFalse($state->active);
+        self::assertSame(['message' => 'stored'], $state->options);
+    }
+
+    public function test_deactivateFeature_can_remove_the_state_entirely(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'stored']));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $system->deactivateFeature(FeatureId::fromString('a'), removeState: true);
+
+        self::assertNull($this->states->loadAll()->get(FeatureId::fromString('a')));
+    }
+
+    public function test_deactivateFeature_throws_for_an_unknown_feature(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $system->deactivateFeature(FeatureId::fromString('missing'));
+    }
+}
