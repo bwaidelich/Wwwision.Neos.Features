@@ -1,0 +1,4 @@
+privilegeTargets:
+  'Neos\Neos\Security\Authorization\Privilege\ModulePrivilege':
+    'Wwwision.Neos.Features.Module:FeaturesModule':
+      matcher: 'administration/features'

@@ -1,0 +1,15 @@
+Neos:
+  Neos:
+    modules:
+      'administration':
+        submodules:
+          'features':
+            label: 'Features'
+            controller: 'Wwwision\Neos\Features\Controller\FeaturesModuleController'
+            description: 'Enable/configure global features of this installation'
+            icon: 'vial'
+            additionalResources:
+              styleSheets:
+                - 'resource://Wwwision.Neos.ModuleComponents/Public/Styles/module.css'
+              javaScripts:
+                - 'resource://Wwwision.Neos.ModuleComponents/Public/Scripts/module.js'

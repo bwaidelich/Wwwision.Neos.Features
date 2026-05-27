@@ -1,0 +1,7 @@
+Wwwision:
+  Neos:
+    Features:
+      featureGroups: []
+      features: []
+      states:
+        path: '%FLOW_PATH_DATA%Features/FeatureStates.yaml'

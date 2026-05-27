@@ -1,0 +1,26 @@
+prototype(Wwwision.Neos.Features:FeatureStateBadge)  < prototype(Neos.Fusion:Component) {
+  active = false
+  renderer = Neos.Fusion:Case {
+    active {
+      condition = ${props.active == true}
+      renderer = NeosBE:Badge {
+        errorLevel = 1
+        content = 'AKTIV'
+      }
+    }
+    inactive {
+      condition = ${props.active == false}
+      renderer = NeosBE:Badge {
+        errorLevel = 3
+        content = 'INAKTIV'
+      }
+    }
+    default {
+      condition = ${true}
+      renderer = NeosBE:Badge {
+        errorLevel = 0
+        content = 'UNBEKANNT'
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+Wwwision\Neos\Features\Adapter\ForProvidingFeatureDefinitionsFromSettings:
+  arguments:
+    1:
+      setting: Wwwision.Neos.Features.features
+
+Wwwision\Neos\Features\Adapter\ForStoringFeatureStatesViaYaml:
+  arguments:
+    1:
+      setting: Wwwision.Neos.Features.states.path
+
+Wwwision\Neos\Features\FeatureSystem:
+  scope: singleton
+  factoryObjectName: Wwwision\Neos\Features\Factory\FeatureSystemFactory

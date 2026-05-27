@@ -1,0 +1,5 @@
+Neos:
+  Flow:
+    object:
+      includeClasses:
+        'Wwwision.Neos.Features': ['Wwwision\\Neos\\Features\\(Adapter|Controller|Factory)\\.*']
