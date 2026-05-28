@@ -8,11 +8,11 @@ use Wwwision\Neos\Features\Adapter\FeatureProviderFromSettings;
 use Wwwision\Neos\Features\Adapter\ForStoringFeatureStatesViaYaml;
 use Wwwision\Neos\Features\FeatureSystem;
 
-final readonly class FeatureSystemFactory
+final class FeatureSystemFactory
 {
     public function __construct(
-        private FeatureProviderFromSettings $featureProvider,
-        private ForStoringFeatureStatesViaYaml $forStoringFeatureStates,
+        private readonly FeatureProviderFromSettings $featureProvider,
+        private readonly ForStoringFeatureStatesViaYaml $forStoringFeatureStates,
     ) {}
 
     public function create(): FeatureSystem

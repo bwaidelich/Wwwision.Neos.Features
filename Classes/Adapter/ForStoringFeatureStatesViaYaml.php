@@ -11,13 +11,13 @@ use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureStates;
 use Wwwision\Neos\Features\Ports\ForStoringFeatureStates;
 
-final readonly class ForStoringFeatureStatesViaYaml implements ForStoringFeatureStates
+final class ForStoringFeatureStatesViaYaml implements ForStoringFeatureStates
 {
     public function __construct(
-        private string $yamlPath,
+        private readonly string $yamlPath,
     ) {
-        if (!is_dir(dirname($this->yamlPath))) {
-            mkdir(dirname($this->yamlPath), 0777, true);
+        if (!is_dir(dirname($this->yamlPath)) && !mkdir($concurrentDirectory = dirname($this->yamlPath), 0777, true) && !is_dir($concurrentDirectory)) {
+            throw new \RuntimeException(sprintf('Failed to create directory "%s"', $concurrentDirectory));
         }
         if (!file_exists($this->yamlPath)) {
             file_put_contents($this->yamlPath, '');
