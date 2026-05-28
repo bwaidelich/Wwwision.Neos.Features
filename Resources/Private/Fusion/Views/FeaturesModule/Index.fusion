@@ -1,23 +1,44 @@
 Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
   content = afx`
-      <h2>Features</h2>
-      <NeosBE:Table>
-        <NeosBE:Table.Head>
+    <NeosBE:Table>
+      <NeosBE:Table.Head>
+        <NeosBE:Table.Row>
+          <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
+          <NeosBE:Table.HeaderCell attributes.style="width: 20em" />
+          <NeosBE:Table.HeaderCell attributes.style="width: 9em" />
+          <NeosBE:Table.HeaderCell />
+          <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
+        </NeosBE:Table.Row>
+      </NeosBE:Table.Head>
+      <Neos.Fusion:Loop items={sections} itemName="section">
+        <NeosBE:Table.FolderRow>
+          <NeosBE:Table.Cell>
+            <NeosBE:Icon icon={section.group.icon ? section.group.icon : 'cube'} />
+          </NeosBE:Table.Cell>
+          <NeosBE:Table.Cell attributes.colspan="3">
+            {section.group ? section.group.name : 'Sonstige'}
+            <small @if={section.group.description}>
+                &nbsp;–&nbsp;{String.nl2br(section.group.description)}
+            </small>
+          </NeosBE:Table.Cell>
+          <NeosBE:Table.ActionCell>
+            <NeosBE:ToggleButton target={"feature_group_" + section.group.id}/>
+          </NeosBE:Table.ActionCell>
+        </NeosBE:Table.FolderRow>
+        <tbody id={"feature_group_" + section.group.id} style="border:none">
           <NeosBE:Table.Row>
-            <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
-            <NeosBE:Table.HeaderCell attributes.style="width: 20em" content="Feature"/>
-            <NeosBE:Table.HeaderCell content="Status"/>
-            <NeosBE:Table.HeaderCell content="Beschreibung"/>
-            <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
+            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
+            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Feature"/>
+            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Status"/>
+            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Beschreibung"/>
+            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
           </NeosBE:Table.Row>
-        </NeosBE:Table.Head>
-        <NeosBE:Table.Body>
-          <Neos.Fusion:Loop items={features} itemName="feature">
+          <Neos.Fusion:Loop items={section.features} itemName="feature">
             <NeosBE:Table.ClickableRow target.action="show" target.arguments={{featureId: feature.id.value}}>
               <NeosBE:Table.Cell>
                 <NeosBE:Icon icon={feature.icon ? feature.icon : 'cube'} />
               </NeosBE:Table.Cell>
-              <NeosBE:Table.Cell>
+              <NeosBE:Table.Cell attributes.title={"ID: " + feature.id.value}>
                 {feature.name}
               </NeosBE:Table.Cell>
               <NeosBE:Table.Cell>
@@ -27,13 +48,16 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
                 {String.cropAtWord(feature.description, 50, '...')}
               </NeosBE:Table.Cell>
               <NeosBE:Table.ActionCell>
-                <NeosBE:Button @if={!feature.active} icon="toggle-on" action="show" arguments={{featureId: feature.id.value, showActivateDialog: true}}/>
-                <NeosBE:Button @if={feature.active} icon="toggle-off" action="show" arguments={{featureId: feature.id.value, showDeactivateDialog: true}}/>
+                <NeosBE:Button @if={feature.activatable} icon="toggle-on" action="activateForm" arguments={{featureId: feature.id.value}}/>
+                <NeosBE:Button @if={!feature.active && !feature.activatable} icon="toggle-on" attributes.disabled="disabled" attributes.title={'Zuerst aktivieren: ' + feature.unmetDependencies}/>
+                <NeosBE:Button @if={feature.deactivatable} icon="toggle-off" action="deactivateForm" arguments={{featureId: feature.id.value}}/>
+                <NeosBE:Button @if={feature.active && !feature.deactivatable} icon="toggle-off" attributes.disabled="disabled" attributes.title={'Wird benötigt von: ' + feature.activeDependents}/>
               </NeosBE:Table.ActionCell>
             </NeosBE:Table.ClickableRow>
           </Neos.Fusion:Loop>
-        </NeosBE:Table.Body>
-      </NeosBE:Table>
+        </tbody>
+      </Neos.Fusion:Loop>
+    </NeosBE:Table>
   `
 
   footer = afx`

@@ -8,6 +8,7 @@ use Webmozart\Assert\Assert;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDescription;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureIcon;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureName;
+use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupId;
 use Wwwision\Types\Parser;
 use Wwwision\Types\Schema\ShapeSchema;
 
@@ -19,6 +20,9 @@ final readonly class Feature
     /**
      * @param class-string<TOptions> $optionsClassName
      * @param TOptions|null $options
+     * @param FeatureIds $dependsOn the features this one requires to be active
+     * @param FeatureIds $unmetDependencies subset of {@see $dependsOn} that is currently inactive (activation is blocked while non-empty)
+     * @param FeatureIds $activeDependents currently active features that require this one (deactivation is blocked while non-empty)
      */
     public function __construct(
         public FeatureId $id,
@@ -28,6 +32,10 @@ final readonly class Feature
         private string $optionsClassName,
         public bool $active,
         public FeatureOptions|null $options,
+        public FeatureGroupId|null $group,
+        public FeatureIds $dependsOn,
+        public FeatureIds $unmetDependencies,
+        public FeatureIds $activeDependents,
     ) {}
 
     public function getOptionsSchema(): ShapeSchema
@@ -35,5 +43,21 @@ final readonly class Feature
         $schema = Parser::getSchema($this->optionsClassName);
         Assert::isInstanceOf($schema, ShapeSchema::class);
         return $schema;
+    }
+
+    /**
+     * Whether the feature may currently be activated (it is inactive and all its dependencies are active).
+     */
+    public function isActivatable(): bool
+    {
+        return !$this->active && $this->unmetDependencies->isEmpty();
+    }
+
+    /**
+     * Whether the feature may currently be deactivated (it is active and no active feature still requires it).
+     */
+    public function isDeactivatable(): bool
+    {
+        return $this->active && $this->activeDependents->isEmpty();
     }
 }

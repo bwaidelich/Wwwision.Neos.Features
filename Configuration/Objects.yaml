@@ -1,7 +1,9 @@
-Wwwision\Neos\Features\Adapter\ForProvidingFeatureDefinitionsFromSettings:
+Wwwision\Neos\Features\Adapter\FeatureProviderFromSettings:
   arguments:
     1:
       setting: Wwwision.Neos.Features.features
+    2:
+      setting: Wwwision.Neos.Features.featureGroups
 
 Wwwision\Neos\Features\Adapter\ForStoringFeatureStatesViaYaml:
   arguments:

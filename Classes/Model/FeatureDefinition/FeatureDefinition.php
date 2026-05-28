@@ -9,7 +9,9 @@ use Webmozart\Assert\Assert;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
+use Wwwision\Neos\Features\Model\Feature\FeatureIds;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
+use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupId;
 use Wwwision\Types\Options;
 use Wwwision\Types\Parser;
 use Wwwision\Types\Schema\ShapeSchema;
@@ -32,6 +34,8 @@ final readonly class FeatureDefinition
         public Closure $onDeactivate,
         public FeatureDescription $description,
         public FeatureIcon|null $icon,
+        public FeatureIds $dependsOn,
+        public FeatureGroupId|null $group,
     ) {}
 
     /**
@@ -39,6 +43,7 @@ final readonly class FeatureDefinition
      * @param class-string<TO> $optionsClassName
      * @param callable(TO): FeatureActivateResult $onActivate
      * @param callable(): FeatureDeactivateResult $onDeactivate
+     * @param FeatureIds|array<FeatureId|string>|null $dependsOn
      * @return self<TO>
      */
     public static function create(
@@ -49,6 +54,8 @@ final readonly class FeatureDefinition
         callable $onDeactivate,
         FeatureDescription|string|null $description = null,
         FeatureIcon|string|null $icon = null,
+        FeatureIds|array|null $dependsOn = null,
+        FeatureGroupId|string|null $group = null,
     ): self {
         if (is_string($id)) {
             $id = FeatureId::fromString($id);
@@ -64,7 +71,15 @@ final readonly class FeatureDefinition
         if (is_string($icon)) {
             $icon = FeatureIcon::fromString($icon);
         }
-        return new self($id, $name, $optionsClassName, $onActivate(...), $onDeactivate(...), $description, $icon);
+        if ($dependsOn === null) {
+            $dependsOn = FeatureIds::none();
+        } elseif (is_array($dependsOn)) {
+            $dependsOn = FeatureIds::fromArray($dependsOn);
+        }
+        if (is_string($group)) {
+            $group = FeatureGroupId::fromString($group);
+        }
+        return new self($id, $name, $optionsClassName, $onActivate(...), $onDeactivate(...), $description, $icon, $dependsOn, $group);
     }
 
     public function getOptionsSchema(): ShapeSchema

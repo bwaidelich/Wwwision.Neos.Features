@@ -1,0 +1,12 @@
+Wwwision.Neos.Features.FeaturesModuleController.deactivateForm = NeosBE:Module {
+  content = afx`
+    <Neos.Fusion.Form:Form attributes.id="form-deactivate-feature" form.target.action="deactivate" form.target.arguments={{featureId: feature.id.value}}>
+      <p>Soll das Feature &quot;{feature.name}&quot; wirklich deaktiviert werden?</p>
+    </Neos.Fusion.Form:Form>
+  `
+
+  footer = afx`
+    <NeosBE:Button content="Abbrechen" icon="backward" action="index" />
+    <NeosBE:Button form="form-deactivate-feature" isDangerous={true} content="Feature deaktivieren" icon="toggle-off" />
+  `
+}

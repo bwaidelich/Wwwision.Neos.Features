@@ -8,15 +8,17 @@ use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Wwwision\Neos\Features\FeatureSystem;
+use Wwwision\Neos\Features\Model\Feature\EmptyFeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\Feature;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
+use Wwwision\Neos\Features\Model\Feature\FeatureDependencyViolation;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinitions;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
-use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureDefinitions;
+use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureConfiguration;
 use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureStates;
 use Wwwision\Neos\Features\Tests\Fixtures\SampleFeatureOptions;
 use Wwwision\Types\Exception\CoerceException;
@@ -37,7 +39,7 @@ final class FeatureSystemTest extends TestCase
     private function featureSystem(array $definitions): FeatureSystem
     {
         return new FeatureSystem(
-            new InMemoryFeatureDefinitions(FeatureDefinitions::fromArray($definitions)),
+            new InMemoryFeatureConfiguration(FeatureDefinitions::fromArray($definitions)),
             $this->states,
         );
     }
@@ -45,6 +47,7 @@ final class FeatureSystemTest extends TestCase
     /**
      * @param callable(FeatureOptions): FeatureActivateResult|null $onActivate
      * @param callable(): FeatureDeactivateResult|null $onDeactivate
+     * @param list<string> $dependsOn
      * @return FeatureDefinition<FeatureOptions>
      */
     private static function definition(
@@ -52,6 +55,7 @@ final class FeatureSystemTest extends TestCase
         string $optionsClassName = SampleFeatureOptions::class,
         ?callable $onActivate = null,
         ?callable $onDeactivate = null,
+        array $dependsOn = [],
     ): FeatureDefinition {
         return FeatureDefinition::create(
             id: $id,
@@ -59,7 +63,13 @@ final class FeatureSystemTest extends TestCase
             optionsClassName: $optionsClassName,
             onActivate: $onActivate ?? static fn(FeatureOptions $o): FeatureActivateResult => FeatureActivateResult::success(),
             onDeactivate: $onDeactivate ?? static fn(): FeatureDeactivateResult => FeatureDeactivateResult::success(),
+            dependsOn: $dependsOn,
         );
+    }
+
+    private function markActive(string $id): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString($id), true, []));
     }
 
     public function test_getFeatures_returns_one_feature_per_definition(): void
@@ -198,5 +208,69 @@ final class FeatureSystemTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
         $system->deactivateFeature(FeatureId::fromString('missing'));
+    }
+
+    public function test_activateFeature_is_blocked_while_a_dependency_is_inactive(): void
+    {
+        $system = $this->featureSystem([self::definition('a'), self::definition('b', dependsOn: ['a'])]);
+
+        $this->expectException(FeatureDependencyViolation::class);
+        $system->activateFeature(FeatureId::fromString('b'), []);
+    }
+
+    public function test_activateFeature_does_not_store_a_state_when_blocked_by_a_dependency(): void
+    {
+        $system = $this->featureSystem([self::definition('a'), self::definition('b', dependsOn: ['a'])]);
+
+        try {
+            $system->activateFeature(FeatureId::fromString('b'), []);
+        } catch (FeatureDependencyViolation) {
+        }
+
+        self::assertNull($this->states->loadAll()->get(FeatureId::fromString('b')));
+    }
+
+    public function test_activateFeature_succeeds_once_all_dependencies_are_active(): void
+    {
+        $this->markActive('a');
+        $system = $this->featureSystem([self::definition('a'), self::definition('b', optionsClassName: EmptyFeatureOptions::class, dependsOn: ['a'])]);
+
+        $system->activateFeature(FeatureId::fromString('b'), []);
+
+        self::assertTrue($this->states->loadAll()->get(FeatureId::fromString('b'))?->active);
+    }
+
+    public function test_deactivateFeature_is_blocked_while_an_active_dependent_requires_it(): void
+    {
+        $this->markActive('a');
+        $this->markActive('b');
+        $system = $this->featureSystem([self::definition('a'), self::definition('b', dependsOn: ['a'])]);
+
+        $this->expectException(FeatureDependencyViolation::class);
+        $system->deactivateFeature(FeatureId::fromString('a'));
+    }
+
+    public function test_deactivateFeature_succeeds_when_its_dependents_are_inactive(): void
+    {
+        $this->markActive('a');
+        $system = $this->featureSystem([self::definition('a'), self::definition('b', dependsOn: ['a'])]);
+
+        $system->deactivateFeature(FeatureId::fromString('a'), removeState: true);
+
+        self::assertNull($this->states->loadAll()->get(FeatureId::fromString('a')));
+    }
+
+    public function test_getFeature_exposes_unmet_dependencies_and_active_dependents(): void
+    {
+        $this->markActive('b');
+        $system = $this->featureSystem([self::definition('a'), self::definition('b', optionsClassName: EmptyFeatureOptions::class, dependsOn: ['a'])]);
+
+        $a = $system->getFeature(FeatureId::fromString('a'));
+        $b = $system->getFeature(FeatureId::fromString('b'));
+
+        self::assertSame(['a'], $b->unmetDependencies->toStringArray());
+        self::assertSame(['b'], $a->activeDependents->toStringArray());
+        self::assertFalse($b->isActivatable());
+        self::assertFalse($a->isDeactivatable());
     }
 }
