@@ -22,7 +22,7 @@
     "require": {
         "php": ">=8.4",
         "wwwision/types": "^1.10",
-        "neos/neos": "^8.4",
+        "neos/neos": "^8.3",
         "wwwision/neos-modulecomponents": "^1",
         "webmozart/assert": "^1 || ^2"
     },
