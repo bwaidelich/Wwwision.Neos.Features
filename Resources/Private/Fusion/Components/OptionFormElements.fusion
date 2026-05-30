@@ -10,101 +10,22 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
       <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={'options[' + optionName + ']'} label={String.firstLetterToUpperCase(optionName) + (Type.className(optionSchema) == 'Wwwision\\Types\\Schema\\OptionalSchema' ? '' : '*')}>
         <small @if={optionSchema.description}>{String.nl2br(optionSchema.description)}</small>
         <div class="neos row">
-          <Wwwision.Neos.Features:OptionFormElementInput schema={optionSchema}/>
+          <Wwwision.Neos.Features:OptionFormElementInput schema={optionSchema} />
         </div>
       </Neos.Fusion.Form:Neos.BackendModule.FieldContainer>
     `
   }
 }
 
-prototype(Wwwision.Neos.Features:OptionFormElementInput) < prototype(Neos.Fusion:Case) {
+prototype(Wwwision.Neos.Features:OptionFormElementInput) < prototype(Neos.Fusion:Component) {
 
   schema = null
 
-  @context {
-    isRequired = ${Type.className(this.schema) != 'Wwwision\\Types\\Schema\\OptionalSchema'}
-    schema = ${Type.className(this.schema) == 'Wwwision\\Types\\Schema\\OptionalSchema' ? this.schema.wrapped : this.schema}
-  }
-  @ignoreProperties = ${['isRequired', 'schema']}
-
-  range {
-    condition = ${schema.extensions.x-feature-editor == 'range'}
-    renderer = afx`
-      <Neos.Fusion.Form:Input attributes.type="range" attributes.class="neos-span12" attributes.required={isRequired} attributes.min={schema.minimum} attributes.max={schema.maximum} attributes.step={schema.extensions.x-feature-editor-options.step}/>
-    `
-  }
-
-  password {
-    condition = ${schema.extensions.x-feature-editor == 'password'}
-    renderer = afx`
-      <Neos.Fusion.Form:Input attributes.type="password" attributes.class="neos-span12" attributes.required={isRequired} attributes.min={schema.minimum} attributes.max={schema.maximum} />
-    `
-  }
-
-  color {
-    condition = ${schema.extensions.x-feature-editor == 'color'}
-    renderer = afx`
-      <Neos.Fusion.Form:Input attributes.type="color" attributes.class="neos-span2" attributes.required={isRequired} attributes.alpha={schema.extensions.x-feature-editor-options.alpha} attributes.alpha.@if={schema.extensions.x-feature-editor-options.alpha} attributes.colorspace={schema.extensions.x-feature-editor-options.colorspace} attributes.colorspace.@if={schema.extensions.x-feature-editor-options.colorspace}/>
-    `
-  }
-
-  radio-uttons {
-    condition = ${schema.extensions.x-feature-editor == 'radio-buttons'}
-    renderer = Neos.Fusion:Loop {
-      items = ${schema.caseSchemas}
-      itemName = 'caseSchema'
-      itemRenderer = afx`
-        <Neos.Fusion.Form:Radio field.value={caseSchema.value} attributes.required={isRequired}>{caseSchema.name}</Neos.Fusion.Form:Radio><br/>
-      `
+  renderer = Neos.Fusion:Renderer {
+    @context {
+      isRequired = ${Type.className(props.schema) != 'Wwwision\\Types\\Schema\\OptionalSchema'}
+      schema = ${Type.className(props.schema) == 'Wwwision\\Types\\Schema\\OptionalSchema' ? props.schema.wrapped : props.schema}
     }
-  }
-
-  file-upload {
-    condition = ${schema.extensions.x-feature-editor == 'file-upload'}
-    renderer = afx`
-      <Neos.Fusion.Form:Input attributes.type="file" attributes.class="neos-span12" attributes.required={isRequired} attributes.accept={schema.extensions.x-feature-editor-options.accept} attributes.accept.@if={schema.extensions.x-feature-editor-options.accept}/>
-    `
-  }
-
-  enum {
-    condition = ${schema.type == 'enum'}
-    renderer = Neos.Fusion.Form:Select {
-      attributes.required = ${isRequired}
-      content = Neos.Fusion:Loop {
-        items = ${schema.caseSchemas}
-        itemName = 'caseSchema'
-        iterationName = 'caseIteration'
-        itemRenderer = afx`
-          <Neos.Fusion.Form:Select.Option option.value={caseSchema.value}>{caseSchema.name}</Neos.Fusion.Form:Select.Option>
-        `
-      }
-    }
-  }
-
-  integer {
-    condition = ${schema.type == 'integer' || schema.type == 'float'}
-    renderer = afx`
-      <Neos.Fusion.Form:Input attributes.type="number" attributes.class="neos-span4" attributes.required={isRequired} attributes.min={schema.minimum} attributes.max={schema.maximum}/>
-    `
-  }
-
-  boolean {
-    condition = ${schema.type == 'boolean'}
-    renderer = afx`
-      <Neos.Fusion.Form:Checkbox attributes.value="1" attributes.required={isRequired} />`
-  }
-
-  string {
-    condition = ${schema.type == 'string'}
-    renderer = afx`
-      <Neos.Fusion.Form:Input attributes.type="text" attributes.class="neos-span12" attributes.required={isRequired} attributes.minlength={schema.minLength} attributes.maxlength={schema.maxLength} attributes.pattern={schema.pattern}/>`
-  }
-
-  default {
-    @position = 'end'
-    condition = true
-    renderer = afx`
-      <NeosBE:Badge errorLevel="3">Missing renderer for schema of type "{schema.type}"</NeosBE:Badge>
-    `
+    renderPath = '/Wwwision/Neos/Features/OptionEditor'
   }
 }

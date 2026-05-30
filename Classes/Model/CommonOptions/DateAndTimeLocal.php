@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Wwwision\Neos\Features\Model\CommonOptions;
+
+use DateTime;
+use DateTimeImmutable;
+use DateTimeInterface;
+use Wwwision\Types\Attributes\StringBased;
+
+use function Wwwision\Types\instantiate;
+
+#[StringBased(pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$', extensions: ['x-feature-editor' => 'dateTimeLocal'])]
+final readonly class DateAndTimeLocal
+{
+
+    private const string FORMAT = 'Y-m-d\TH:i';
+
+    private function __construct(
+        public string $value
+    ) {
+    }
+
+    public static function fromString(string $value): self
+    {
+        return instantiate(self::class, $value);
+    }
+
+    public static function fromPhpDateTime(DateTimeInterface $dateTime): self
+    {
+        if ($dateTime instanceof DateTimeImmutable || $dateTime instanceof DateTime) {
+            $dateTime = $dateTime->setTimezone(new \DateTimeZone('UTC'));
+        }
+        return instantiate(self::class, $dateTime->format(self::FORMAT));
+    }
+
+    public function toPhpDateTime(): DateTimeImmutable
+    {
+        return DateTimeImmutable::createFromFormat(self::FORMAT, $this->value);
+    }
+}
