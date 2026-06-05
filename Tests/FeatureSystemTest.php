@@ -15,6 +15,7 @@ use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDependencyViolation;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
+use Wwwision\Neos\Features\Model\Feature\FeatureStateConflict;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinitions;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
@@ -166,6 +167,7 @@ final class FeatureSystemTest extends TestCase
 
     public function test_deactivateFeature_invokes_the_deactivate_callback(): void
     {
+        $this->markActive('a');
         $deactivated = false;
         $system = $this->featureSystem([
             self::definition('a', onDeactivate: function () use (&$deactivated): FeatureDeactivateResult {
@@ -258,6 +260,83 @@ final class FeatureSystemTest extends TestCase
         $system->deactivateFeature(FeatureId::fromString('a'), removeState: true);
 
         self::assertNull($this->states->loadAll()->get(FeatureId::fromString('a')));
+    }
+
+    public function test_activateFeature_is_blocked_when_the_feature_is_already_active(): void
+    {
+        $this->markActive('a');
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(FeatureStateConflict::class);
+        $system->activateFeature(FeatureId::fromString('a'), []);
+    }
+
+    public function test_activateFeature_does_not_invoke_the_activate_callback_when_already_active(): void
+    {
+        $this->markActive('a');
+        $activated = false;
+        $system = $this->featureSystem([
+            self::definition('a', onActivate: function (FeatureOptions $options) use (&$activated): FeatureActivateResult {
+                $activated = true;
+                return FeatureActivateResult::success();
+            }),
+        ]);
+
+        try {
+            $system->activateFeature(FeatureId::fromString('a'), []);
+        } catch (FeatureStateConflict) {
+        }
+
+        self::assertFalse($activated);
+    }
+
+    public function test_activateFeature_does_not_overwrite_the_stored_options_when_already_active(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'stored', 'threshold' => 3]));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        try {
+            $system->activateFeature(FeatureId::fromString('a'), ['message' => 'new', 'threshold' => 9]);
+        } catch (FeatureStateConflict) {
+        }
+
+        $state = $this->states->loadAll()->get(FeatureId::fromString('a'));
+        self::assertSame(['message' => 'stored', 'threshold' => 3], $state?->options);
+    }
+
+    public function test_deactivateFeature_is_blocked_when_the_feature_has_no_state(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(FeatureStateConflict::class);
+        $system->deactivateFeature(FeatureId::fromString('a'));
+    }
+
+    public function test_deactivateFeature_is_blocked_when_the_feature_is_already_inactive(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), false, ['message' => 'stored']));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(FeatureStateConflict::class);
+        $system->deactivateFeature(FeatureId::fromString('a'));
+    }
+
+    public function test_deactivateFeature_does_not_invoke_the_deactivate_callback_when_already_inactive(): void
+    {
+        $deactivated = false;
+        $system = $this->featureSystem([
+            self::definition('a', onDeactivate: function () use (&$deactivated): FeatureDeactivateResult {
+                $deactivated = true;
+                return FeatureDeactivateResult::success();
+            }),
+        ]);
+
+        try {
+            $system->deactivateFeature(FeatureId::fromString('a'));
+        } catch (FeatureStateConflict) {
+        }
+
+        self::assertFalse($deactivated);
     }
 
     public function test_getFeature_exposes_unmet_dependencies_and_active_dependents(): void

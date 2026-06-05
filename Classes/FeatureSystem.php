@@ -12,6 +12,7 @@ use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\Feature\FeatureIds;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\Features;
+use Wwwision\Neos\Features\Model\Feature\FeatureStateConflict;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroups;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
@@ -58,6 +59,9 @@ final class FeatureSystem
     public function activateFeature(FeatureId $featureId, array $options): void
     {
         $featureDefinition = $this->requireDefinition($featureId, 1779121538);
+        if ($this->getFeatureState($featureId)?->active === true) {
+            throw FeatureStateConflict::cannotActivateBecauseAlreadyActive($featureId);
+        }
         $inactiveDependencies = $this->unmetDependencies($featureDefinition->dependsOn);
         if (!$inactiveDependencies->isEmpty()) {
             throw FeatureDependencyViolation::cannotActivateBecauseDependenciesInactive($featureId, $inactiveDependencies);
@@ -77,6 +81,10 @@ final class FeatureSystem
     public function deactivateFeature(FeatureId $featureId, bool $removeState = false): void
     {
         $featureDefinition = $this->requireDefinition($featureId, 1779122634);
+        $currentState = $this->getFeatureState($featureId);
+        if ($currentState === null || !$currentState->active) {
+            throw FeatureStateConflict::cannotDeactivateBecauseAlreadyInactive($featureId);
+        }
         $activeDependents = $this->activeDependents($featureId);
         if (!$activeDependents->isEmpty()) {
             throw FeatureDependencyViolation::cannotDeactivateBecauseRequiredByActiveDependents($featureId, $activeDependents);
@@ -87,10 +95,7 @@ final class FeatureSystem
             $this->forStoringFeatureStates->remove($featureId);
             $this->featureStatesRuntimeCache = null;
         } else {
-            $featureState = $this->getFeatureStates()->get($featureId);
-            if ($featureState?->active) {
-                $this->storeAndInvalidate($featureState->with(active: false));
-            }
+            $this->storeAndInvalidate($currentState->with(active: false));
         }
     }
 
