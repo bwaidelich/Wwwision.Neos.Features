@@ -38,4 +38,13 @@ final class FeatureStateConflict extends RuntimeException
             1748000003,
         );
     }
+
+    public static function cannotUpdateOptionsBecauseInactive(FeatureId $featureId): self
+    {
+        return new self(
+            sprintf('Options of Feature "%s" cannot be updated because it is not active', $featureId->value),
+            $featureId,
+            1780682587,
+        );
+    }
 }

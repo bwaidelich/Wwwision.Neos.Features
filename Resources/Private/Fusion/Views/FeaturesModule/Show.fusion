@@ -41,6 +41,10 @@ Wwwision.Neos.Features.FeaturesModuleController.show = NeosBE:Module {
             </ul>
           </NeosBE:Table.Cell>
         </NeosBE:Table.Row>
+        <NeosBE:Table.Row @if={feature.options}>
+          <NeosBE:Table.Cell>Optionen</NeosBE:Table.Cell>
+          <NeosBE:Table.Cell><Wwwision.Neos.Features:FeatureOptions options={feature.normalizedOptions} /></NeosBE:Table.Cell>
+        </NeosBE:Table.Row>
       </NeosBE:Table.Body>
     </NeosBE:Table>
   `
@@ -51,5 +55,6 @@ Wwwision.Neos.Features.FeaturesModuleController.show = NeosBE:Module {
     <NeosBE:Button @if={!feature.active && !feature.activatable} attributes.disabled="disabled" content="Feature aktivieren..." icon="toggle-on" attributes.title={'Zuerst aktivieren: ' + feature.unmetDependencies} />
     <NeosBE:Button @if={feature.deactivatable} action="deactivateForm" arguments={{featureId: feature.id.value}} isDangerous={true} content="Feature deaktivieren..." icon="toggle-off" />
     <NeosBE:Button @if={feature.active && !feature.deactivatable} attributes.disabled="disabled" content="Feature deaktivieren..." icon="toggle-off" attributes.title={'Wird benötigt von: ' + feature.activeDependents} />
+    <NeosBE:Button @if={feature.active} action="updateOptionsForm" arguments={{featureId: feature.id.value}} content="Feature-Optionen anpassen..." icon="pencil" />
   `
 }

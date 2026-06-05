@@ -1,0 +1,29 @@
+prototype(Wwwision.Neos.Features:FeatureOptions)  < prototype(Neos.Fusion:Component) {
+  options = ${[]}
+  renderer = afx`
+    <ul>
+      <Neos.Fusion:Loop items={props.options} itemName="optionValue" itemKey="optionName">
+        <li>
+          {optionName}:&nbsp;
+          <Wwwision.Neos.Features:FeatureOptions.Value value={optionValue}/>
+        </li>
+      </Neos.Fusion:Loop>
+    </ul>
+  `
+}
+
+prototype(Wwwision.Neos.Features:FeatureOptions.Value)  < prototype(Neos.Fusion:Component) {
+  value = null
+  renderer = Neos.Fusion:Case {
+    array {
+      condition = ${Type.isArray(props.value)}
+      renderer = Wwwision.Neos.Features:FeatureOptions {
+        options = ${props.value}
+      }
+    }
+    default {
+      condition = ${true}
+      renderer = ${props.value}
+    }
+  }
+}

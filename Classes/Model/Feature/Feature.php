@@ -9,6 +9,7 @@ use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDescription;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureIcon;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureName;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupId;
+use Wwwision\Types\Normalizer\Normalizer;
 use Wwwision\Types\Parser;
 use Wwwision\Types\Schema\ShapeSchema;
 
@@ -43,6 +44,14 @@ final readonly class Feature
         $schema = Parser::getSchema($this->optionsClassName);
         Assert::isInstanceOf($schema, ShapeSchema::class);
         return $schema;
+    }
+
+    public function getNormalizedOptions(): mixed
+    {
+        if ($this->options === null) {
+            return null;
+        }
+        return (new Normalizer())->normalize($this->options);
     }
 
     /**

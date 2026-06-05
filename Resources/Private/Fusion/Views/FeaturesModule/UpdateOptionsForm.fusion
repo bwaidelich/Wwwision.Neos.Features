@@ -1,0 +1,13 @@
+Wwwision.Neos.Features.FeaturesModuleController.updateOptionsForm = NeosBE:Module {
+  content = afx`
+    <Neos.Fusion.Form:Form attributes.id="form-update-feature" form.data.options={feature.normalizedOptions} form.enableReferrer={false} form.enableTrustedProperties={false} form.target.action="updateOptions" form.target.arguments={{featureId: feature.id.value}}>
+      <p>{feature.description}</p>
+      <Wwwision.Neos.Features:OptionFormElements optionsSchema={feature.optionsSchema} namespace="options" />
+    </Neos.Fusion.Form:Form>
+  `
+
+  footer = afx`
+    <NeosBE:Button content="Abbrechen" icon="backward" action="index" />
+    <NeosBE:Button form="form-update-feature" isSuccess={true} content="Feature aktualisieren" icon="check" />
+  `
+}

@@ -21,8 +21,6 @@ use Wwwision\Neos\Features\Ports\ForProvidingFeatureConfiguration;
 use Wwwision\Neos\Features\Ports\ForStoringFeatureStates;
 use Wwwision\Types\Normalizer\Normalizer;
 use Wwwision\Types\Options;
-use Wwwision\Types\Parser;
-use Wwwision\Types\Schema\ShapeSchema;
 
 final class FeatureSystem
 {
@@ -66,16 +64,31 @@ final class FeatureSystem
         if (!$inactiveDependencies->isEmpty()) {
             throw FeatureDependencyViolation::cannotActivateBecauseDependenciesInactive($featureId, $inactiveDependencies);
         }
-        $optionsSchema = Parser::getSchema($featureDefinition->optionsClassName);
-        Assert::isInstanceOf($optionsSchema, ShapeSchema::class);
-        $featureOptions = $optionsSchema->instantiate($options, Options::create(ignoreUnrecognizedKeys: false));
-        Assert::isInstanceOf($featureOptions, FeatureOptions::class);
+        $featureOptions = $this->instantiateOptions($featureDefinition, $options);
         // TODO: Evaluate result
         ($featureDefinition->onActivate)($featureOptions);
 
-        $normalizedOptions = new Normalizer()->normalize($featureOptions);
-        Assert::isMap($normalizedOptions);
-        $this->storeAndInvalidate(new FeatureState($featureId, true, $normalizedOptions));
+        $this->storeAndInvalidate(new FeatureState($featureId, true, $this->normalizeOptions($featureOptions)));
+    }
+
+    /**
+     * @param array<mixed> $newOptions
+     */
+    public function updateFeatureOptions(FeatureId $featureId, array $newOptions): void
+    {
+        $featureDefinition = $this->requireDefinition($featureId, 1780681405);
+
+        $currentState = $this->getFeatureState($featureId);
+        if ($currentState === null || !$currentState->active) {
+            throw FeatureStateConflict::cannotUpdateOptionsBecauseInactive($featureId);
+        }
+        $previousFeatureOptions = $featureDefinition->parseOptions($currentState->options);
+        $newFeatureOptions = $this->instantiateOptions($featureDefinition, $newOptions);
+
+        // TODO: Evaluate result
+        ($featureDefinition->onUpdateOptions)($previousFeatureOptions, $newFeatureOptions);
+
+        $this->storeAndInvalidate(new FeatureState($featureId, true, $this->normalizeOptions($newFeatureOptions)));
     }
 
     public function deactivateFeature(FeatureId $featureId, bool $removeState = false): void
@@ -89,8 +102,9 @@ final class FeatureSystem
         if (!$activeDependents->isEmpty()) {
             throw FeatureDependencyViolation::cannotDeactivateBecauseRequiredByActiveDependents($featureId, $activeDependents);
         }
+        $previousFeatureOptions = $featureDefinition->parseOptions($currentState->options);
         // TODO: Evaluate result
-        ($featureDefinition->onDeactivate)();
+        ($featureDefinition->onDeactivate)($previousFeatureOptions);
         if ($removeState) {
             $this->forStoringFeatureStates->remove($featureId);
             $this->featureStatesRuntimeCache = null;
@@ -109,6 +123,29 @@ final class FeatureSystem
             throw new InvalidArgumentException(sprintf('Feature with id "%s" does not exist', $featureId), $exceptionCode);
         }
         return $featureDefinition;
+    }
+
+    /**
+     * Instantiates and validates user-supplied options against the feature's options schema, rejecting unrecognized keys.
+     *
+     * @param FeatureDefinition<FeatureOptions> $featureDefinition
+     * @param array<mixed> $options
+     */
+    private function instantiateOptions(FeatureDefinition $featureDefinition, array $options): FeatureOptions
+    {
+        $featureOptions = $featureDefinition->getOptionsSchema()->instantiate($options, Options::create(ignoreUnrecognizedKeys: false));
+        Assert::isInstanceOf($featureOptions, FeatureOptions::class);
+        return $featureOptions;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function normalizeOptions(FeatureOptions $featureOptions): array
+    {
+        $normalizedOptions = new Normalizer()->normalize($featureOptions);
+        Assert::isMap($normalizedOptions);
+        return $normalizedOptions;
     }
 
     private function storeAndInvalidate(FeatureState $featureState): void

@@ -80,7 +80,7 @@ final class FeaturesModuleController extends AbstractModuleController
     }
 
     /**
-     * @param array<mixed> $options
+     * @param array<string, mixed> $options
      */
     public function activateAction(string $featureId, array $options = []): void
     {
@@ -95,6 +95,36 @@ final class FeaturesModuleController extends AbstractModuleController
             return;
         }
         $this->addFlashMessage('Feature "%s" aktiviert', 'success', messageArguments: [$feature->name->value]);
+        $this->redirect('index');
+    }
+
+    public function updateOptionsFormAction(string $featureId): void
+    {
+        $featureIdVO = FeatureId::fromString($featureId);
+        $feature = $this->featureSystem->getFeature($featureIdVO);
+        if (!$feature->active) {
+            $this->addFlashMessage('Feature "%s" kann nicht aktualsiert werden, da es nicht aktiv ist', 'Fehler', Message::SEVERITY_WARNING, messageArguments: [$featureIdVO->value]);
+            $this->redirect('index');
+        }
+        $this->view->assign('feature', $feature);
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    public function updateOptionsAction(string $featureId, array $options = []): void
+    {
+        $featureIdVO = FeatureId::fromString($featureId);
+        $feature = $this->featureSystem->getFeature($featureIdVO);
+        $options = self::preProcessOptions($featureIdVO, $options);
+        try {
+            $this->featureSystem->updateFeatureOptions($featureIdVO, $options);
+        } catch (FeatureDependencyViolation $exception) {
+            $this->addFlashMessage($exception->getMessage(), 'error', Message::SEVERITY_ERROR);
+            $this->redirect('index');
+            return;
+        }
+        $this->addFlashMessage('Feature-Optionen für "%s" aktualisiert', 'success', messageArguments: [$feature->name->value]);
         $this->redirect('index');
     }
 

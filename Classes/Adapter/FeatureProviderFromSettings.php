@@ -121,6 +121,7 @@ final class FeatureProviderFromSettings implements ForProvidingFeatureConfigurat
                 name: $name,
                 optionsClassName: $featureInstance::optionsClassName(),
                 onActivate: $featureInstance->activate(...),
+                onUpdateOptions: $featureInstance->updateOptions(...),
                 onDeactivate: $featureInstance->deactivate(...),
                 description: $description,
                 icon: $icon,

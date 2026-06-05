@@ -22,8 +22,13 @@ final class NoopFeatureTest extends TestCase
         self::assertTrue((new NoopFeature())->activate(new EmptyFeatureOptions())->success);
     }
 
+    public function test_updateOptions_reports_success(): void
+    {
+        self::assertTrue((new NoopFeature())->updateOptions(new EmptyFeatureOptions(), new EmptyFeatureOptions())->success);
+    }
+
     public function test_deactivate_reports_success(): void
     {
-        self::assertTrue((new NoopFeature())->deactivate()->success);
+        self::assertTrue((new NoopFeature())->deactivate(new EmptyFeatureOptions())->success);
     }
 }

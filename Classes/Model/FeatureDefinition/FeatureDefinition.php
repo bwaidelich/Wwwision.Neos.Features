@@ -11,6 +11,7 @@ use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\Feature\FeatureIds;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
+use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupId;
 use Wwwision\Types\Options;
 use Wwwision\Types\Parser;
@@ -24,13 +25,15 @@ final readonly class FeatureDefinition
     /**
      * @param class-string<TOptions> $optionsClassName
      * @param Closure(TOptions): FeatureActivateResult $onActivate
-     * @param Closure(): FeatureDeactivateResult $onDeactivate
+     * @param Closure(TOptions, TOptions): FeatureUpdateOptionsResult $onUpdateOptions
+     * @param Closure(TOptions): FeatureDeactivateResult $onDeactivate
      */
     private function __construct(
         public FeatureId $id,
         public FeatureName $name,
         public string $optionsClassName,
         public Closure $onActivate,
+        public Closure $onUpdateOptions,
         public Closure $onDeactivate,
         public FeatureDescription $description,
         public FeatureIcon|null $icon,
@@ -42,7 +45,8 @@ final readonly class FeatureDefinition
      * @template TO of FeatureOptions
      * @param class-string<TO> $optionsClassName
      * @param callable(TO): FeatureActivateResult $onActivate
-     * @param callable(): FeatureDeactivateResult $onDeactivate
+     * @param callable(TO, TO): FeatureUpdateOptionsResult $onUpdateOptions
+     * @param callable(TO): FeatureDeactivateResult $onDeactivate
      * @param FeatureIds|array<FeatureId|string>|null $dependsOn
      * @return self<TO>
      */
@@ -51,6 +55,7 @@ final readonly class FeatureDefinition
         FeatureName|string $name,
         string $optionsClassName,
         callable $onActivate,
+        callable $onUpdateOptions,
         callable $onDeactivate,
         FeatureDescription|string|null $description = null,
         FeatureIcon|string|null $icon = null,
@@ -79,7 +84,7 @@ final readonly class FeatureDefinition
         if (is_string($group)) {
             $group = FeatureGroupId::fromString($group);
         }
-        return new self($id, $name, $optionsClassName, $onActivate(...), $onDeactivate(...), $description, $icon, $dependsOn, $group);
+        return new self($id, $name, $optionsClassName, $onActivate(...), $onUpdateOptions(...), $onDeactivate(...), $description, $icon, $dependsOn, $group);
     }
 
     public function getOptionsSchema(): ShapeSchema

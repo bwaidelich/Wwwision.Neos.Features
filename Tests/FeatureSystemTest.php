@@ -16,6 +16,7 @@ use Wwwision\Neos\Features\Model\Feature\FeatureDependencyViolation;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\FeatureStateConflict;
+use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinitions;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
@@ -47,7 +48,8 @@ final class FeatureSystemTest extends TestCase
 
     /**
      * @param callable(FeatureOptions): FeatureActivateResult|null $onActivate
-     * @param callable(): FeatureDeactivateResult|null $onDeactivate
+     * @param callable(FeatureOptions, FeatureOptions): FeatureUpdateOptionsResult|null $onUpdateOptions
+     * @param callable(FeatureOptions): FeatureDeactivateResult|null $onDeactivate
      * @param list<string> $dependsOn
      * @return FeatureDefinition<FeatureOptions>
      */
@@ -55,6 +57,7 @@ final class FeatureSystemTest extends TestCase
         string $id,
         string $optionsClassName = SampleFeatureOptions::class,
         ?callable $onActivate = null,
+        ?callable $onUpdateOptions = null,
         ?callable $onDeactivate = null,
         array $dependsOn = [],
     ): FeatureDefinition {
@@ -63,14 +66,15 @@ final class FeatureSystemTest extends TestCase
             name: ucfirst($id),
             optionsClassName: $optionsClassName,
             onActivate: $onActivate ?? static fn(FeatureOptions $o): FeatureActivateResult => FeatureActivateResult::success(),
-            onDeactivate: $onDeactivate ?? static fn(): FeatureDeactivateResult => FeatureDeactivateResult::success(),
+            onUpdateOptions: $onUpdateOptions ?? static fn(FeatureOptions $previous, FeatureOptions $new): FeatureUpdateOptionsResult => FeatureUpdateOptionsResult::success(),
+            onDeactivate: $onDeactivate ?? static fn(FeatureOptions $o): FeatureDeactivateResult => FeatureDeactivateResult::success(),
             dependsOn: $dependsOn,
         );
     }
 
     private function markActive(string $id): void
     {
-        $this->states->store(new FeatureState(FeatureId::fromString($id), true, []));
+        $this->states->store(new FeatureState(FeatureId::fromString($id), true, ['message' => 'active']));
     }
 
     public function test_getFeatures_returns_one_feature_per_definition(): void
@@ -170,7 +174,7 @@ final class FeatureSystemTest extends TestCase
         $this->markActive('a');
         $deactivated = false;
         $system = $this->featureSystem([
-            self::definition('a', onDeactivate: function () use (&$deactivated): FeatureDeactivateResult {
+            self::definition('a', onDeactivate: function (FeatureOptions $options) use (&$deactivated): FeatureDeactivateResult {
                 $deactivated = true;
                 return FeatureDeactivateResult::success();
             }),
@@ -179,6 +183,24 @@ final class FeatureSystemTest extends TestCase
         $system->deactivateFeature(FeatureId::fromString('a'));
 
         self::assertTrue($deactivated);
+    }
+
+    public function test_deactivateFeature_passes_the_currently_active_options_to_the_callback(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'stored', 'threshold' => 5]));
+        $deactivatedWith = null;
+        $system = $this->featureSystem([
+            self::definition('a', onDeactivate: function (FeatureOptions $options) use (&$deactivatedWith): FeatureDeactivateResult {
+                $deactivatedWith = $options;
+                return FeatureDeactivateResult::success();
+            }),
+        ]);
+
+        $system->deactivateFeature(FeatureId::fromString('a'));
+
+        self::assertInstanceOf(SampleFeatureOptions::class, $deactivatedWith);
+        self::assertSame('stored', $deactivatedWith->message);
+        self::assertSame(5, $deactivatedWith->threshold);
     }
 
     public function test_deactivateFeature_keeps_the_state_but_flips_active_to_false(): void
@@ -337,6 +359,109 @@ final class FeatureSystemTest extends TestCase
         }
 
         self::assertFalse($deactivated);
+    }
+
+    public function test_updateFeatureOptions_invokes_the_callback_with_the_previous_and_new_options(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'old', 'threshold' => 1]));
+        $previous = null;
+        $new = null;
+        $system = $this->featureSystem([
+            self::definition('a', onUpdateOptions: function (FeatureOptions $p, FeatureOptions $n) use (&$previous, &$new): FeatureUpdateOptionsResult {
+                $previous = $p;
+                $new = $n;
+                return FeatureUpdateOptionsResult::success();
+            }),
+        ]);
+
+        $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new', 'threshold' => 2]);
+
+        self::assertInstanceOf(SampleFeatureOptions::class, $previous);
+        self::assertSame('old', $previous->message);
+        self::assertSame(1, $previous->threshold);
+        self::assertInstanceOf(SampleFeatureOptions::class, $new);
+        self::assertSame('new', $new->message);
+        self::assertSame(2, $new->threshold);
+    }
+
+    public function test_updateFeatureOptions_stores_the_new_normalized_options_and_keeps_the_feature_active(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'old', 'threshold' => 1]));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new', 'threshold' => 2]);
+
+        $state = $this->states->loadAll()->get(FeatureId::fromString('a'));
+        self::assertNotNull($state);
+        self::assertTrue($state->active);
+        self::assertSame(['message' => 'new', 'threshold' => 2], $state->options);
+    }
+
+    public function test_updateFeatureOptions_throws_for_an_unknown_feature(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $system->updateFeatureOptions(FeatureId::fromString('missing'), []);
+    }
+
+    public function test_updateFeatureOptions_is_blocked_when_the_feature_has_no_state(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(FeatureStateConflict::class);
+        $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new']);
+    }
+
+    public function test_updateFeatureOptions_is_blocked_when_the_feature_is_inactive(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), false, ['message' => 'old']));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(FeatureStateConflict::class);
+        $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new']);
+    }
+
+    public function test_updateFeatureOptions_does_not_invoke_the_callback_when_inactive(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), false, ['message' => 'old']));
+        $updated = false;
+        $system = $this->featureSystem([
+            self::definition('a', onUpdateOptions: function (FeatureOptions $p, FeatureOptions $n) use (&$updated): FeatureUpdateOptionsResult {
+                $updated = true;
+                return FeatureUpdateOptionsResult::success();
+            }),
+        ]);
+
+        try {
+            $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new']);
+        } catch (FeatureStateConflict) {
+        }
+
+        self::assertFalse($updated);
+    }
+
+    public function test_updateFeatureOptions_does_not_change_the_stored_options_when_inactive(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), false, ['message' => 'old', 'threshold' => 1]));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        try {
+            $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new', 'threshold' => 2]);
+        } catch (FeatureStateConflict) {
+        }
+
+        $state = $this->states->loadAll()->get(FeatureId::fromString('a'));
+        self::assertSame(['message' => 'old', 'threshold' => 1], $state?->options);
+    }
+
+    public function test_updateFeatureOptions_rejects_unrecognized_option_keys(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'old']));
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $this->expectException(CoerceException::class);
+        $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new', 'bogus' => true]);
     }
 
     public function test_getFeature_exposes_unmet_dependencies_and_active_dependents(): void

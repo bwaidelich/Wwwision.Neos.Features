@@ -8,6 +8,7 @@ use Wwwision\Neos\Features\Model\Feature\EmptyFeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
+use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
 
 /**
  * @implements FeatureImplementation<EmptyFeatureOptions>
@@ -25,7 +26,13 @@ final readonly class NoopFeature implements FeatureImplementation
         return FeatureActivateResult::success();
     }
 
-    public function deactivate(): FeatureDeactivateResult
+    public function updateOptions(FeatureOptions $previousOptions, FeatureOptions $newOptions): FeatureUpdateOptionsResult
+    {
+        // no op
+        return FeatureUpdateOptionsResult::success();
+    }
+
+    public function deactivate(FeatureOptions $previousOptions): FeatureDeactivateResult
     {
         // no op
         return FeatureDeactivateResult::success();

@@ -11,6 +11,7 @@ use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
+use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDescription;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureIcon;
@@ -29,11 +30,19 @@ final class FeatureDefinitionTest extends TestCase
     }
 
     /**
-     * @return callable(): FeatureDeactivateResult
+     * @return callable(FeatureOptions, FeatureOptions): FeatureUpdateOptionsResult
+     */
+    private static function noopUpdateOptions(): callable
+    {
+        return static fn(FeatureOptions $previous, FeatureOptions $new): FeatureUpdateOptionsResult => FeatureUpdateOptionsResult::success();
+    }
+
+    /**
+     * @return callable(FeatureOptions): FeatureDeactivateResult
      */
     private static function noopDeactivate(): callable
     {
-        return static fn(): FeatureDeactivateResult => FeatureDeactivateResult::success();
+        return static fn(FeatureOptions $options): FeatureDeactivateResult => FeatureDeactivateResult::success();
     }
 
     public function test_create_coerces_string_arguments_to_value_objects(): void
@@ -43,6 +52,7 @@ final class FeatureDefinitionTest extends TestCase
             name: 'My Feature',
             optionsClassName: EmptyFeatureOptions::class,
             onActivate: self::noopActivate(),
+            onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
             description: 'A description',
             icon: 'star',
@@ -64,6 +74,7 @@ final class FeatureDefinitionTest extends TestCase
             name: FeatureName::fromString('My Feature'),
             optionsClassName: EmptyFeatureOptions::class,
             onActivate: self::noopActivate(),
+            onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
             description: FeatureDescription::fromString('desc'),
             icon: FeatureIcon::fromString('cog'),
@@ -81,6 +92,7 @@ final class FeatureDefinitionTest extends TestCase
             name: 'My Feature',
             optionsClassName: EmptyFeatureOptions::class,
             onActivate: self::noopActivate(),
+            onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
         );
 
@@ -94,16 +106,18 @@ final class FeatureDefinitionTest extends TestCase
             name: 'My Feature',
             optionsClassName: EmptyFeatureOptions::class,
             onActivate: self::noopActivate(),
+            onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
         );
 
         self::assertNull($definition->icon);
     }
 
-    public function test_the_activate_and_deactivate_callbacks_are_wired_up(): void
+    public function test_the_activate_update_and_deactivate_callbacks_are_wired_up(): void
     {
         $activatedWith = null;
-        $deactivated = false;
+        $updatedWith = null;
+        $deactivatedWith = null;
 
         $definition = FeatureDefinition::create(
             id: 'my-feature',
@@ -113,18 +127,25 @@ final class FeatureDefinitionTest extends TestCase
                 $activatedWith = $options;
                 return FeatureActivateResult::success();
             },
-            onDeactivate: function () use (&$deactivated): FeatureDeactivateResult {
-                $deactivated = true;
+            onUpdateOptions: function (FeatureOptions $previous, FeatureOptions $new) use (&$updatedWith): FeatureUpdateOptionsResult {
+                $updatedWith = [$previous, $new];
+                return FeatureUpdateOptionsResult::success();
+            },
+            onDeactivate: function (FeatureOptions $options) use (&$deactivatedWith): FeatureDeactivateResult {
+                $deactivatedWith = $options;
                 return FeatureDeactivateResult::success();
             },
         );
 
         $options = new SampleFeatureOptions('hi');
+        $newOptions = new SampleFeatureOptions('bye');
         ($definition->onActivate)($options);
-        ($definition->onDeactivate)();
+        ($definition->onUpdateOptions)($options, $newOptions);
+        ($definition->onDeactivate)($options);
 
         self::assertSame($options, $activatedWith);
-        self::assertTrue($deactivated);
+        self::assertSame([$options, $newOptions], $updatedWith);
+        self::assertSame($options, $deactivatedWith);
     }
 
     public function test_parseOptions_instantiates_the_options_class(): void
@@ -134,6 +155,7 @@ final class FeatureDefinitionTest extends TestCase
             name: 'My Feature',
             optionsClassName: SampleFeatureOptions::class,
             onActivate: self::noopActivate(),
+            onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
         );
 
@@ -151,6 +173,7 @@ final class FeatureDefinitionTest extends TestCase
             name: 'My Feature',
             optionsClassName: SampleFeatureOptions::class,
             onActivate: self::noopActivate(),
+            onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
         );
 
