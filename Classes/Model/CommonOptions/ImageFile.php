@@ -13,8 +13,7 @@ final readonly class ImageFile
 {
     private function __construct(
         public string $tmpPath,
-    ) {
-    }
+    ) {}
 
     public static function fromString(string $tmpPath): self
     {

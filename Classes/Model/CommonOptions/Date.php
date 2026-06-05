@@ -14,13 +14,11 @@ use function Wwwision\Types\instantiate;
 #[StringBased(format: StringTypeFormat::date)]
 final readonly class Date
 {
-
     private const string FORMAT = 'Y-m-d';
 
     private function __construct(
-        public string $value
-    ) {
-    }
+        public string $value,
+    ) {}
 
     public static function fromString(string $value): self
     {

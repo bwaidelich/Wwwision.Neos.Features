@@ -12,12 +12,10 @@ use function Wwwision\Types\instantiate;
 #[StringBased(extensions: ['x-feature-editor' => 'password'])]
 final readonly class Password
 {
-
     private function __construct(
         #[SensitiveParameter]
-        public string $value
-    ) {
-    }
+        public string $value,
+    ) {}
 
     public static function fromString(string $value): self
     {
