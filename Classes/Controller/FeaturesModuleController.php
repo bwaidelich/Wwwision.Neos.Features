@@ -80,7 +80,7 @@ final class FeaturesModuleController extends AbstractModuleController
     }
 
     /**
-     * @param array<string, mixed> $options
+     * @param array<mixed> $options
      */
     public function activateAction(string $featureId, array $options = []): void
     {
@@ -88,7 +88,7 @@ final class FeaturesModuleController extends AbstractModuleController
         $feature = $this->featureSystem->getFeature($featureIdVO);
         $options = self::preProcessOptions($featureIdVO, $options);
         try {
-            $this->featureSystem->activateFeature($featureIdVO, array_filter($options, static fn($value) => $value !== ''));
+            $this->featureSystem->activateFeature($featureIdVO, $options);
         } catch (FeatureDependencyViolation $exception) {
             $this->addFlashMessage($exception->getMessage(), 'error', Message::SEVERITY_ERROR);
             $this->redirect('index');
@@ -99,8 +99,8 @@ final class FeaturesModuleController extends AbstractModuleController
     }
 
     /**
-     * @param array<string, mixed> $options
-     * @return array<string, mixed>
+     * @param array<mixed> $options
+     * @return array<mixed>
      */
     private static function preProcessOptions(FeatureId $featureId, array $options): array
     {

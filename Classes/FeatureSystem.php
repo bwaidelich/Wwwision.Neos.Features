@@ -53,7 +53,7 @@ final class FeatureSystem
     }
 
     /**
-     * @param array<string, mixed> $options
+     * @param array<mixed> $options
      */
     public function activateFeature(FeatureId $featureId, array $options): void
     {
