@@ -1,19 +1,35 @@
 prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Component) {
   optionsSchema = null
+  namespace = null
 
   renderer = Neos.Fusion:Loop {
     items = ${props.optionsSchema.propertySchemas}
     itemName = 'optionSchema'
     itemKey = 'optionName'
 
-    itemRenderer = afx`
-      <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={'options[' + optionName + ']'} label={String.firstLetterToUpperCase(optionName) + (Type.className(optionSchema) == 'Wwwision\\Types\\Schema\\OptionalSchema' ? '' : '*')}>
-        <small @if={optionSchema.description}>{String.nl2br(optionSchema.description)}</small>
-        <div class="neos row">
-          <Wwwision.Neos.Features:OptionFormElementInput schema={optionSchema} />
-        </div>
-      </Neos.Fusion.Form:Neos.BackendModule.FieldContainer>
-    `
+    itemRenderer = Neos.Fusion:Case {
+      shape {
+        condition = ${optionSchema.type == 'object'}
+        renderer = afx`
+            <fieldset>
+              <legend>{optionName} <small @if={optionSchema.description}>{String.nl2br(optionSchema.description)}</small></legend>
+              <Wwwision.Neos.Features:OptionFormElements optionsSchema={optionSchema} namespace={props.namespace == null ? optionName : props.namespace + '.' + optionName} />
+            </fieldset>
+        `
+      }
+      default {
+        @position = 'end 9999'
+        condition = ${true}
+        renderer = afx`
+          <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={String.pregReplace(props.namespace == null ? optionName : props.namespace + '.' + optionName, '/\.([^.]+)/', '[$1]')} label={String.firstLetterToUpperCase(optionName) + (Type.className(optionSchema) == 'Wwwision\\Types\\Schema\\OptionalSchema' ? '' : '*')}>
+            <small @if={optionSchema.description}>{String.nl2br(optionSchema.description)}</small>
+            <div class="neos row">
+              <Wwwision.Neos.Features:OptionFormElementInput schema={optionSchema} />
+            </div>
+          </Neos.Fusion.Form:Neos.BackendModule.FieldContainer>
+        `
+      }
+    }
   }
 }
 

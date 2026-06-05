@@ -9,6 +9,7 @@ use Neos\Fusion\View\FusionView;
 use Neos\Neos\Controller\Module\AbstractModuleController;
 use Neos\Utility\Files;
 use Psr\Http\Message\UploadedFileInterface;
+use RuntimeException;
 use Wwwision\Neos\Features\FeatureSystem;
 use Wwwision\Neos\Features\Model\Feature\Feature;
 use Wwwision\Neos\Features\Model\Feature\FeatureDependencyViolation;
@@ -85,16 +86,7 @@ final class FeaturesModuleController extends AbstractModuleController
     {
         $featureIdVO = FeatureId::fromString($featureId);
         $feature = $this->featureSystem->getFeature($featureIdVO);
-        foreach ($options as $optionName => $optionValue) {
-            if ($optionValue instanceof UploadedFileInterface) {
-                $targetPath = Files::concatenatePaths([FLOW_PATH_DATA, 'Features', $featureIdVO->value, $optionName]); // @phpstan-ignore constant.notFound
-                if (!is_dir(dirname($targetPath))) {
-                    mkdir(dirname($targetPath), 0777, true);
-                }
-                $optionValue->moveTo($targetPath);
-                $options[$optionName] = $targetPath;
-            }
-        }
+        $options = self::preProcessOptions($featureIdVO, $options);
         try {
             $this->featureSystem->activateFeature($featureIdVO, array_filter($options, static fn($value) => $value !== ''));
         } catch (FeatureDependencyViolation $exception) {
@@ -104,6 +96,35 @@ final class FeaturesModuleController extends AbstractModuleController
         }
         $this->addFlashMessage('Feature "%s" aktiviert', 'success', messageArguments: [$feature->name->value]);
         $this->redirect('index');
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private static function preProcessOptions(FeatureId $featureId, array $options): array
+    {
+        $result = [];
+        foreach ($options as $optionName => $optionValue) {
+            if ($optionValue instanceof UploadedFileInterface) {
+                $targetPath = Files::concatenatePaths([FLOW_PATH_DATA, 'Features', $featureId->value, $optionName]); // @phpstan-ignore constant.notFound
+                if (!is_dir(dirname($targetPath)) && !mkdir($concurrentDirectory = dirname($targetPath), 0777, true) && !is_dir($concurrentDirectory)) {
+                    throw new RuntimeException(sprintf('Directory "%s" was not created', $concurrentDirectory));
+                }
+                $optionValue->moveTo($targetPath);
+                $options[$optionName] = $targetPath;
+                continue;
+            }
+            if ($optionValue === '') {
+                continue;
+            }
+            if (is_array($optionValue)) {
+                $result[$optionName] = self::preProcessOptions($featureId, $optionValue);
+            } else {
+                $result[$optionName] = $optionValue;
+            }
+        }
+        return $result;
     }
 
     public function deactivateFormAction(string $featureId): void
