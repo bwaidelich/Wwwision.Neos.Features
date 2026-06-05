@@ -21,6 +21,10 @@ prototype(Wwwision.Neos.Features:FeatureOptions.Value)  < prototype(Neos.Fusion:
         options = ${props.value}
       }
     }
+    boolean {
+      condition = ${Type.isBoolean(props.value)}
+      renderer = ${props.value ? '✔' : '✖'}
+    }
     default {
       condition = ${true}
       renderer = ${props.value}
