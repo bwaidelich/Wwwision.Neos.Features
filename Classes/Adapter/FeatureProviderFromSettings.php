@@ -15,6 +15,7 @@ use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroup;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroups;
 use Wwwision\Neos\Features\Model\FeatureImplementation\ConfigurableFeatureImplementation;
 use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureImplementation;
+use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureImplementationFactory;
 use Wwwision\Neos\Features\Model\FeatureImplementation\NoopFeature;
 use Wwwision\Neos\Features\Model\FeatureImplementation\OptionlessFeatureImplementation;
 use Wwwision\Neos\Features\Ports\ForProvidingFeatureConfiguration;
@@ -94,13 +95,7 @@ final class FeatureProviderFromSettings implements ForProvidingFeatureConfigurat
         foreach (new PositionalArraySorter($this->featureSettings)->toArray() as $featureId => $settings) {
             Assert::string($featureId, 'Feature ID must be a string');
             Assert::isArray($settings, sprintf('Settings for feature "%s" must be an array, given: %%s', $featureId));
-            if (!isset($settings['objectName'])) {
-                $featureInstance = new NoopFeature();
-            } else {
-                Assert::string($settings['objectName'], sprintf('Feature "%s" must have a "objectName" setting of type string, given: %%s', $featureId));
-                $featureInstance = $this->objectManager->get($settings['objectName']);
-                Assert::isInstanceOf($featureInstance, FeatureImplementation::class, sprintf('"objectName" of Feature "%s" must implement %s', $featureId, FeatureImplementation::class));
-            }
+            $featureInstance = $this->resolveImplementation($featureId, $settings);
 
             $name = $settings['name'] ?? $featureId;
             Assert::string($name, sprintf('Feature "%s" name must be a string, given: %%s', $featureId));
@@ -143,10 +138,51 @@ final class FeatureProviderFromSettings implements ForProvidingFeatureConfigurat
                     group: $group,
                 );
             } else {
-                throw new InvalidArgumentException(sprintf('"objectName" of Feature "%s" must implement %s or %s', $featureId, ConfigurableFeatureImplementation::class, OptionlessFeatureImplementation::class), 1780682591);
+                throw new InvalidArgumentException(sprintf('Implementation of Feature "%s" must implement %s or %s', $featureId, ConfigurableFeatureImplementation::class, OptionlessFeatureImplementation::class), 1780682591);
             }
         }
         return FeatureDefinitions::fromArray($featureDefinitions);
+    }
+
+    /**
+     * Resolves the {@see FeatureImplementation} for a feature from its settings:
+     * - neither `objectName` nor `factoryClassName` -> the built-in {@see NoopFeature}
+     * - `objectName` -> the object-managed instance of that name
+     * - `factoryClassName` (+ optional `options`) -> the result of the factory's `create()`, fed the parsed factory options
+     *
+     * Setting both `objectName` and `factoryClassName`, or an `options` key without `factoryClassName`, is a configuration error.
+     *
+     * @param array<mixed> $settings
+     */
+    private function resolveImplementation(string $featureId, array $settings): FeatureImplementation
+    {
+        $objectName = $settings['objectName'] ?? null;
+        $factoryClassName = $settings['factoryClassName'] ?? null;
+
+        if ($objectName !== null && $factoryClassName !== null) {
+            throw new InvalidArgumentException(sprintf('Feature "%s" must not declare both "objectName" and "factoryClassName"', $featureId), 1780682592);
+        }
+        if (isset($settings['options']) && $factoryClassName === null) {
+            throw new InvalidArgumentException(sprintf('Feature "%s" declares "options" but no "factoryClassName" (note: editor options are configured on the implementation, not in Settings)', $featureId), 1780682593);
+        }
+
+        if ($factoryClassName !== null) {
+            Assert::string($factoryClassName, sprintf('Feature "%s" must have a "factoryClassName" setting of type string, given: %%s', $featureId));
+            $factory = $this->objectManager->get($factoryClassName);
+            Assert::isInstanceOf($factory, FeatureImplementationFactory::class, sprintf('"factoryClassName" of Feature "%s" must implement %s', $featureId, FeatureImplementationFactory::class));
+            $options = $settings['options'] ?? [];
+            Assert::isMap($options, sprintf('"options" of Feature "%s" must be a map, given: %%s', $featureId));
+            return $factory->create($options);
+        }
+
+        if ($objectName !== null) {
+            Assert::string($objectName, sprintf('Feature "%s" must have a "objectName" setting of type string, given: %%s', $featureId));
+            $featureInstance = $this->objectManager->get($objectName);
+            Assert::isInstanceOf($featureInstance, FeatureImplementation::class, sprintf('"objectName" of Feature "%s" must implement %s', $featureId, FeatureImplementation::class));
+            return $featureInstance;
+        }
+
+        return new NoopFeature();
     }
 
     private function validateGraph(FeatureDefinitions $definitions, FeatureGroups $groups): void
