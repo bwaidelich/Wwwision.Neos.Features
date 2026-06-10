@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Wwwision\Neos\Features\Model\FeatureDefinition;
 
 use Closure;
+use LogicException;
 use Webmozart\Assert\Assert;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
@@ -23,17 +24,17 @@ use Wwwision\Types\Schema\ShapeSchema;
 final readonly class FeatureDefinition
 {
     /**
-     * @param class-string<TOptions> $optionsClassName
-     * @param Closure(TOptions): FeatureActivateResult $onActivate
-     * @param Closure(TOptions, TOptions): FeatureUpdateOptionsResult $onUpdateOptions
-     * @param Closure(TOptions): FeatureDeactivateResult $onDeactivate
+     * @param class-string<TOptions>|null $optionsClassName null for optionless features
+     * @param Closure(TOptions): FeatureActivateResult|Closure(): FeatureActivateResult $onActivate
+     * @param Closure(TOptions, TOptions): FeatureUpdateOptionsResult|null $onUpdateOptions null for optionless features
+     * @param Closure(TOptions): FeatureDeactivateResult|Closure(): FeatureDeactivateResult $onDeactivate
      */
     private function __construct(
         public FeatureId $id,
         public FeatureName $name,
-        public string $optionsClassName,
+        public string|null $optionsClassName,
         public Closure $onActivate,
-        public Closure $onUpdateOptions,
+        public Closure|null $onUpdateOptions,
         public Closure $onDeactivate,
         public FeatureDescription $description,
         public FeatureIcon|null $icon,
@@ -42,6 +43,8 @@ final readonly class FeatureDefinition
     ) {}
 
     /**
+     * Creates a definition for a configurable feature (one that takes typed options).
+     *
      * @template TO of FeatureOptions
      * @param class-string<TO> $optionsClassName
      * @param callable(TO): FeatureActivateResult $onActivate
@@ -62,33 +65,65 @@ final readonly class FeatureDefinition
         FeatureIds|array|null $dependsOn = null,
         FeatureGroupId|string|null $group = null,
     ): self {
-        if (is_string($id)) {
-            $id = FeatureId::fromString($id);
-        }
-        if (is_string($name)) {
-            $name = FeatureName::fromString($name);
-        }
-        if ($description === null) {
-            $description = FeatureDescription::fromString('');
-        } elseif (is_string($description)) {
-            $description = FeatureDescription::fromString($description);
-        }
-        if (is_string($icon)) {
-            $icon = FeatureIcon::fromString($icon);
-        }
-        if ($dependsOn === null) {
-            $dependsOn = FeatureIds::none();
-        } elseif (is_array($dependsOn)) {
-            $dependsOn = FeatureIds::fromArray($dependsOn);
-        }
-        if (is_string($group)) {
-            $group = FeatureGroupId::fromString($group);
-        }
-        return new self($id, $name, $optionsClassName, $onActivate(...), $onUpdateOptions(...), $onDeactivate(...), $description, $icon, $dependsOn, $group);
+        return new self(
+            self::coerceId($id),
+            self::coerceName($name),
+            $optionsClassName,
+            $onActivate(...),
+            $onUpdateOptions(...),
+            $onDeactivate(...),
+            self::coerceDescription($description),
+            self::coerceIcon($icon),
+            self::coerceDependsOn($dependsOn),
+            self::coerceGroup($group),
+        );
+    }
+
+    /**
+     * Creates a definition for an optionless feature (one that takes no options and cannot have its options updated).
+     *
+     * @param callable(): FeatureActivateResult $onActivate
+     * @param callable(): FeatureDeactivateResult $onDeactivate
+     * @param FeatureIds|array<FeatureId|string>|null $dependsOn
+     * @return self<FeatureOptions>
+     */
+    public static function createOptionless(
+        FeatureId|string $id,
+        FeatureName|string $name,
+        callable $onActivate,
+        callable $onDeactivate,
+        FeatureDescription|string|null $description = null,
+        FeatureIcon|string|null $icon = null,
+        FeatureIds|array|null $dependsOn = null,
+        FeatureGroupId|string|null $group = null,
+    ): self {
+        return new self(
+            self::coerceId($id),
+            self::coerceName($name),
+            null,
+            $onActivate(...),
+            null,
+            $onDeactivate(...),
+            self::coerceDescription($description),
+            self::coerceIcon($icon),
+            self::coerceDependsOn($dependsOn),
+            self::coerceGroup($group),
+        );
+    }
+
+    /**
+     * Whether this feature takes options (and, in turn, can have its options updated).
+     */
+    public function hasOptions(): bool
+    {
+        return $this->optionsClassName !== null;
     }
 
     public function getOptionsSchema(): ShapeSchema
     {
+        if ($this->optionsClassName === null) {
+            throw new LogicException(sprintf('Feature "%s" has no options', $this->id->value), 1780682589);
+        }
         $schema = Parser::getSchema($this->optionsClassName);
         Assert::isInstanceOf($schema, ShapeSchema::class);
         return $schema;
@@ -103,5 +138,44 @@ final readonly class FeatureDefinition
         $parsedOptions = $this->getOptionsSchema()->instantiate($options, Options::create(ignoreUnrecognizedKeys: true));
         Assert::isInstanceOf($parsedOptions, FeatureOptions::class);
         return $parsedOptions; // @phpstan-ignore return.type
+    }
+
+    private static function coerceId(FeatureId|string $id): FeatureId
+    {
+        return is_string($id) ? FeatureId::fromString($id) : $id;
+    }
+
+    private static function coerceName(FeatureName|string $name): FeatureName
+    {
+        return is_string($name) ? FeatureName::fromString($name) : $name;
+    }
+
+    private static function coerceDescription(FeatureDescription|string|null $description): FeatureDescription
+    {
+        if ($description === null) {
+            return FeatureDescription::fromString('');
+        }
+        return is_string($description) ? FeatureDescription::fromString($description) : $description;
+    }
+
+    private static function coerceIcon(FeatureIcon|string|null $icon): FeatureIcon|null
+    {
+        return is_string($icon) ? FeatureIcon::fromString($icon) : $icon;
+    }
+
+    /**
+     * @param FeatureIds|array<FeatureId|string>|null $dependsOn
+     */
+    private static function coerceDependsOn(FeatureIds|array|null $dependsOn): FeatureIds
+    {
+        if ($dependsOn === null) {
+            return FeatureIds::none();
+        }
+        return is_array($dependsOn) ? FeatureIds::fromArray($dependsOn) : $dependsOn;
+    }
+
+    private static function coerceGroup(FeatureGroupId|string|null $group): FeatureGroupId|null
+    {
+        return is_string($group) ? FeatureGroupId::fromString($group) : $group;
     }
 }

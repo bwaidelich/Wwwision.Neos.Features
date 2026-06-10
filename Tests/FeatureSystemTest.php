@@ -8,7 +8,6 @@ use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Wwwision\Neos\Features\FeatureSystem;
-use Wwwision\Neos\Features\Model\Feature\EmptyFeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\Feature;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
@@ -68,6 +67,27 @@ final class FeatureSystemTest extends TestCase
             onActivate: $onActivate ?? static fn(FeatureOptions $o): FeatureActivateResult => FeatureActivateResult::success(),
             onUpdateOptions: $onUpdateOptions ?? static fn(FeatureOptions $previous, FeatureOptions $new): FeatureUpdateOptionsResult => FeatureUpdateOptionsResult::success(),
             onDeactivate: $onDeactivate ?? static fn(FeatureOptions $o): FeatureDeactivateResult => FeatureDeactivateResult::success(),
+            dependsOn: $dependsOn,
+        );
+    }
+
+    /**
+     * @param callable(): FeatureActivateResult|null $onActivate
+     * @param callable(): FeatureDeactivateResult|null $onDeactivate
+     * @param list<string> $dependsOn
+     * @return FeatureDefinition<FeatureOptions>
+     */
+    private static function optionlessDefinition(
+        string $id,
+        ?callable $onActivate = null,
+        ?callable $onDeactivate = null,
+        array $dependsOn = [],
+    ): FeatureDefinition {
+        return FeatureDefinition::createOptionless(
+            id: $id,
+            name: ucfirst($id),
+            onActivate: $onActivate ?? static fn(): FeatureActivateResult => FeatureActivateResult::success(),
+            onDeactivate: $onDeactivate ?? static fn(): FeatureDeactivateResult => FeatureDeactivateResult::success(),
             dependsOn: $dependsOn,
         );
     }
@@ -257,7 +277,7 @@ final class FeatureSystemTest extends TestCase
     public function test_activateFeature_succeeds_once_all_dependencies_are_active(): void
     {
         $this->markActive('a');
-        $system = $this->featureSystem([self::definition('a'), self::definition('b', optionsClassName: EmptyFeatureOptions::class, dependsOn: ['a'])]);
+        $system = $this->featureSystem([self::definition('a'), self::optionlessDefinition('b', dependsOn: ['a'])]);
 
         $system->activateFeature(FeatureId::fromString('b'), []);
 
@@ -467,7 +487,7 @@ final class FeatureSystemTest extends TestCase
     public function test_getFeature_exposes_unmet_dependencies_and_active_dependents(): void
     {
         $this->markActive('b');
-        $system = $this->featureSystem([self::definition('a'), self::definition('b', optionsClassName: EmptyFeatureOptions::class, dependsOn: ['a'])]);
+        $system = $this->featureSystem([self::definition('a'), self::optionlessDefinition('b', dependsOn: ['a'])]);
 
         $a = $system->getFeature(FeatureId::fromString('a'));
         $b = $system->getFeature(FeatureId::fromString('b'));
@@ -476,5 +496,57 @@ final class FeatureSystemTest extends TestCase
         self::assertSame(['b'], $a->activeDependents->toStringArray());
         self::assertFalse($b->isActivatable());
         self::assertFalse($a->isDeactivatable());
+    }
+
+    public function test_activateFeature_of_an_optionless_feature_invokes_the_callback_and_stores_empty_options(): void
+    {
+        $activated = false;
+        $system = $this->featureSystem([
+            self::optionlessDefinition('a', onActivate: function () use (&$activated): FeatureActivateResult {
+                $activated = true;
+                return FeatureActivateResult::success();
+            }),
+        ]);
+
+        $system->activateFeature(FeatureId::fromString('a'), []);
+
+        self::assertTrue($activated);
+        $state = $this->states->loadAll()->get(FeatureId::fromString('a'));
+        self::assertNotNull($state);
+        self::assertTrue($state->active);
+        self::assertSame([], $state->options);
+    }
+
+    public function test_activateFeature_of_an_optionless_feature_rejects_non_empty_options(): void
+    {
+        $system = $this->featureSystem([self::optionlessDefinition('a')]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $system->activateFeature(FeatureId::fromString('a'), ['foo' => 'bar']);
+    }
+
+    public function test_deactivateFeature_of_an_optionless_feature_invokes_the_callback(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, []));
+        $deactivated = false;
+        $system = $this->featureSystem([
+            self::optionlessDefinition('a', onDeactivate: function () use (&$deactivated): FeatureDeactivateResult {
+                $deactivated = true;
+                return FeatureDeactivateResult::success();
+            }),
+        ]);
+
+        $system->deactivateFeature(FeatureId::fromString('a'));
+
+        self::assertTrue($deactivated);
+    }
+
+    public function test_updateFeatureOptions_is_blocked_for_an_optionless_feature(): void
+    {
+        $this->states->store(new FeatureState(FeatureId::fromString('a'), true, []));
+        $system = $this->featureSystem([self::optionlessDefinition('a')]);
+
+        $this->expectException(FeatureStateConflict::class);
+        $system->updateFeatureOptions(FeatureId::fromString('a'), []);
     }
 }

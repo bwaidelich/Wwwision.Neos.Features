@@ -76,6 +76,10 @@ final class FeaturesModuleController extends AbstractModuleController
             $this->addFlashMessage('Feature "%s" kann nicht aktiviert werden', 'Fehler', Message::SEVERITY_WARNING, messageArguments: [$featureIdVO->value]);
             $this->redirect('index');
         }
+        if (!$feature->hasOptions()) {
+            // optionless features are activated directly (one-click) and have no activation form
+            $this->redirect('index');
+        }
         $this->view->assign('feature', $feature);
     }
 
@@ -104,6 +108,10 @@ final class FeaturesModuleController extends AbstractModuleController
         $feature = $this->featureSystem->getFeature($featureIdVO);
         if (!$feature->active) {
             $this->addFlashMessage('Feature "%s" kann nicht aktualsiert werden, da es nicht aktiv ist', 'Fehler', Message::SEVERITY_WARNING, messageArguments: [$featureIdVO->value]);
+            $this->redirect('index');
+        }
+        if (!$feature->hasOptions()) {
+            $this->addFlashMessage('Feature "%s" hat keine Optionen', 'Fehler', Message::SEVERITY_WARNING, messageArguments: [$featureIdVO->value]);
             $this->redirect('index');
         }
         $this->view->assign('feature', $feature);

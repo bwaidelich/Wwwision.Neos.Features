@@ -1,0 +1,27 @@
+#
+# Renders the "activate" affordance for a feature:
+# - configurable features link to the activation form (where options are entered)
+# - optionless features are activated directly via an inline one-click POST form
+#
+prototype(Wwwision.Neos.Features:ActivateControl) < prototype(Neos.Fusion:Component) {
+  feature = null
+  content = ''
+  isSuccess = false
+
+  renderer = Neos.Fusion:Case {
+    configurable {
+      condition = ${props.feature.hasOptions}
+      renderer = afx`
+        <NeosBE:Button icon="toggle-on" isSuccess={props.isSuccess} content={props.content} action="activateForm" arguments={{featureId: props.feature.id.value}} />
+      `
+    }
+    optionless {
+      condition = true
+      renderer = afx`
+        <Neos.Fusion.Form:Form form.enableReferrer={false} form.enableTrustedProperties={false} form.target.action="activate" form.target.arguments={{featureId: props.feature.id.value}} attributes.style="display: inline">
+          <NeosBE:Button icon="toggle-on" isSuccess={props.isSuccess} content={props.content} attributes.onclick="event.stopPropagation()" />
+        </Neos.Fusion.Form:Form>
+      `
+    }
+  }
+}

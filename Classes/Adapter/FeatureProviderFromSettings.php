@@ -13,8 +13,10 @@ use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinitions;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroup;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroups;
+use Wwwision\Neos\Features\Model\FeatureImplementation\ConfigurableFeatureImplementation;
 use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureImplementation;
 use Wwwision\Neos\Features\Model\FeatureImplementation\NoopFeature;
+use Wwwision\Neos\Features\Model\FeatureImplementation\OptionlessFeatureImplementation;
 use Wwwision\Neos\Features\Ports\ForProvidingFeatureConfiguration;
 
 /**
@@ -116,18 +118,33 @@ final class FeatureProviderFromSettings implements ForProvidingFeatureConfigurat
                 Assert::allString($dependsOn, sprintf('Feature "%s" dependsOn must be a list of feature IDs (strings), given: %%s', $featureId));
             }
 
-            $featureDefinitions[] = FeatureDefinition::create(
-                id: $featureId,
-                name: $name,
-                optionsClassName: $featureInstance::optionsClassName(),
-                onActivate: $featureInstance->activate(...),
-                onUpdateOptions: $featureInstance->updateOptions(...),
-                onDeactivate: $featureInstance->deactivate(...),
-                description: $description,
-                icon: $icon,
-                dependsOn: array_values($dependsOn),
-                group: $group,
-            );
+            if ($featureInstance instanceof OptionlessFeatureImplementation) {
+                $featureDefinitions[] = FeatureDefinition::createOptionless(
+                    id: $featureId,
+                    name: $name,
+                    onActivate: $featureInstance->activate(...),
+                    onDeactivate: $featureInstance->deactivate(...),
+                    description: $description,
+                    icon: $icon,
+                    dependsOn: array_values($dependsOn),
+                    group: $group,
+                );
+            } elseif ($featureInstance instanceof ConfigurableFeatureImplementation) {
+                $featureDefinitions[] = FeatureDefinition::create(
+                    id: $featureId,
+                    name: $name,
+                    optionsClassName: $featureInstance::optionsClassName(),
+                    onActivate: $featureInstance->activate(...),
+                    onUpdateOptions: $featureInstance->updateOptions(...),
+                    onDeactivate: $featureInstance->deactivate(...),
+                    description: $description,
+                    icon: $icon,
+                    dependsOn: array_values($dependsOn),
+                    group: $group,
+                );
+            } else {
+                throw new InvalidArgumentException(sprintf('"objectName" of Feature "%s" must implement %s or %s', $featureId, ConfigurableFeatureImplementation::class, OptionlessFeatureImplementation::class), 1780682591);
+            }
         }
         return FeatureDefinitions::fromArray($featureDefinitions);
     }

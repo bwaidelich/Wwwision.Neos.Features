@@ -48,7 +48,7 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
                 {String.cropAtWord(feature.description, 50, '...')}
               </NeosBE:Table.Cell>
               <NeosBE:Table.ActionCell>
-                <NeosBE:Button @if={feature.activatable} icon="toggle-on" action="activateForm" arguments={{featureId: feature.id.value}}/>
+                <Wwwision.Neos.Features:ActivateControl @if={feature.activatable} feature={feature} />
                 <NeosBE:Button @if={!feature.active && !feature.activatable} icon="toggle-on" attributes.disabled="disabled" attributes.title={'Zuerst aktivieren: ' + feature.unmetDependencies}/>
                 <NeosBE:Button @if={feature.deactivatable} icon="toggle-off" action="deactivateForm" arguments={{featureId: feature.id.value}}/>
                 <NeosBE:Button @if={feature.active && !feature.deactivatable} icon="toggle-off" attributes.disabled="disabled" attributes.title={'Wird benötigt von: ' + feature.activeDependents}/>

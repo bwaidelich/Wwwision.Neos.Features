@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Wwwision\Neos\Features\Tests\Model\FeatureDefinition;
 
+use LogicException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
-use Wwwision\Neos\Features\Model\Feature\EmptyFeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
@@ -50,7 +50,7 @@ final class FeatureDefinitionTest extends TestCase
         $definition = FeatureDefinition::create(
             id: 'my-feature',
             name: 'My Feature',
-            optionsClassName: EmptyFeatureOptions::class,
+            optionsClassName: SampleFeatureOptions::class,
             onActivate: self::noopActivate(),
             onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
@@ -72,7 +72,7 @@ final class FeatureDefinitionTest extends TestCase
         $definition = FeatureDefinition::create(
             id: FeatureId::fromString('my-feature'),
             name: FeatureName::fromString('My Feature'),
-            optionsClassName: EmptyFeatureOptions::class,
+            optionsClassName: SampleFeatureOptions::class,
             onActivate: self::noopActivate(),
             onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
@@ -90,7 +90,7 @@ final class FeatureDefinitionTest extends TestCase
         $definition = FeatureDefinition::create(
             id: 'my-feature',
             name: 'My Feature',
-            optionsClassName: EmptyFeatureOptions::class,
+            optionsClassName: SampleFeatureOptions::class,
             onActivate: self::noopActivate(),
             onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
@@ -104,7 +104,7 @@ final class FeatureDefinitionTest extends TestCase
         $definition = FeatureDefinition::create(
             id: 'my-feature',
             name: 'My Feature',
-            optionsClassName: EmptyFeatureOptions::class,
+            optionsClassName: SampleFeatureOptions::class,
             onActivate: self::noopActivate(),
             onUpdateOptions: self::noopUpdateOptions(),
             onDeactivate: self::noopDeactivate(),
@@ -181,5 +181,61 @@ final class FeatureDefinitionTest extends TestCase
 
         self::assertInstanceOf(SampleFeatureOptions::class, $options);
         self::assertSame('hello', $options->message);
+    }
+
+    public function test_create_marks_the_definition_as_having_options(): void
+    {
+        $definition = FeatureDefinition::create(
+            id: 'my-feature',
+            name: 'My Feature',
+            optionsClassName: SampleFeatureOptions::class,
+            onActivate: self::noopActivate(),
+            onUpdateOptions: self::noopUpdateOptions(),
+            onDeactivate: self::noopDeactivate(),
+        );
+
+        self::assertTrue($definition->hasOptions());
+        self::assertSame(SampleFeatureOptions::class, $definition->optionsClassName);
+    }
+
+    public function test_createOptionless_builds_a_definition_with_no_options(): void
+    {
+        $activated = false;
+        $deactivated = false;
+
+        $definition = FeatureDefinition::createOptionless(
+            id: 'my-feature',
+            name: 'My Feature',
+            onActivate: function () use (&$activated): FeatureActivateResult {
+                $activated = true;
+                return FeatureActivateResult::success();
+            },
+            onDeactivate: function () use (&$deactivated): FeatureDeactivateResult {
+                $deactivated = true;
+                return FeatureDeactivateResult::success();
+            },
+        );
+
+        self::assertFalse($definition->hasOptions());
+        self::assertNull($definition->optionsClassName);
+        self::assertNull($definition->onUpdateOptions);
+
+        ($definition->onActivate)();
+        ($definition->onDeactivate)();
+        self::assertTrue($activated);
+        self::assertTrue($deactivated);
+    }
+
+    public function test_getOptionsSchema_throws_for_an_optionless_feature(): void
+    {
+        $definition = FeatureDefinition::createOptionless(
+            id: 'my-feature',
+            name: 'My Feature',
+            onActivate: static fn(): FeatureActivateResult => FeatureActivateResult::success(),
+            onDeactivate: static fn(): FeatureDeactivateResult => FeatureDeactivateResult::success(),
+        );
+
+        $this->expectException(LogicException::class);
+        $definition->getOptionsSchema();
     }
 }

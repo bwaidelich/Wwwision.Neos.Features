@@ -64,6 +64,13 @@ final class FeatureSystem
         if (!$inactiveDependencies->isEmpty()) {
             throw FeatureDependencyViolation::cannotActivateBecauseDependenciesInactive($featureId, $inactiveDependencies);
         }
+        if (!$featureDefinition->hasOptions()) {
+            Assert::isEmpty($options, sprintf('Feature "%s" takes no options', $featureId->value));
+            // TODO: Evaluate result
+            ($featureDefinition->onActivate)();
+            $this->storeAndInvalidate(new FeatureState($featureId, true, []));
+            return;
+        }
         $featureOptions = $this->instantiateOptions($featureDefinition, $options);
         // TODO: Evaluate result
         ($featureDefinition->onActivate)($featureOptions);
@@ -77,6 +84,11 @@ final class FeatureSystem
     public function updateFeatureOptions(FeatureId $featureId, array $newOptions): void
     {
         $featureDefinition = $this->requireDefinition($featureId, 1780681405);
+        $onUpdateOptions = $featureDefinition->onUpdateOptions;
+        if ($onUpdateOptions === null) {
+            // optionless features have no options to update
+            throw FeatureStateConflict::cannotUpdateOptionsBecauseFeatureHasNoOptions($featureId);
+        }
 
         $currentState = $this->getFeatureState($featureId);
         if ($currentState === null || !$currentState->active) {
@@ -86,7 +98,7 @@ final class FeatureSystem
         $newFeatureOptions = $this->instantiateOptions($featureDefinition, $newOptions);
 
         // TODO: Evaluate result
-        ($featureDefinition->onUpdateOptions)($previousFeatureOptions, $newFeatureOptions);
+        $onUpdateOptions($previousFeatureOptions, $newFeatureOptions);
 
         $this->storeAndInvalidate(new FeatureState($featureId, true, $this->normalizeOptions($newFeatureOptions)));
     }
@@ -102,9 +114,12 @@ final class FeatureSystem
         if (!$activeDependents->isEmpty()) {
             throw FeatureDependencyViolation::cannotDeactivateBecauseRequiredByActiveDependents($featureId, $activeDependents);
         }
-        $previousFeatureOptions = $featureDefinition->parseOptions($currentState->options);
         // TODO: Evaluate result
-        ($featureDefinition->onDeactivate)($previousFeatureOptions);
+        if ($featureDefinition->hasOptions()) {
+            ($featureDefinition->onDeactivate)($featureDefinition->parseOptions($currentState->options));
+        } else {
+            ($featureDefinition->onDeactivate)();
+        }
         if ($removeState) {
             $this->forStoringFeatureStates->remove($featureId);
             $this->featureStatesRuntimeCache = null;
@@ -193,7 +208,7 @@ final class FeatureSystem
     {
         $featureState = $this->getFeatureState($definition->id);
         $featureOptions = null;
-        if ($featureState !== null) {
+        if ($featureState !== null && $definition->hasOptions()) {
             $featureOptions = $definition->parseOptions($featureState->options);
         }
         return new Feature(

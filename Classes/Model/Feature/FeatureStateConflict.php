@@ -47,4 +47,13 @@ final class FeatureStateConflict extends RuntimeException
             1780682587,
         );
     }
+
+    public static function cannotUpdateOptionsBecauseFeatureHasNoOptions(FeatureId $featureId): self
+    {
+        return new self(
+            sprintf('Options of Feature "%s" cannot be updated because it has no options', $featureId->value),
+            $featureId,
+            1780682588,
+        );
+    }
 }
