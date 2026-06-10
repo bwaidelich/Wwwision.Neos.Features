@@ -92,7 +92,7 @@ Wwwision.Neos.Features.OptionEditor = Neos.Fusion:Case {
   boolean {
     condition = ${schema.type == 'boolean'}
     renderer = afx`
-      <Neos.Fusion.Form:Checkbox attributes.value="1" attributes.required={isRequired} />`
+      <Neos.Fusion.Form:Checkbox attributes.value="1" attributes.checked={field.currentValue} attributes.required={isRequired} />`
   }
 
   string {
