@@ -10,9 +10,9 @@ prototype(Wwwision.Neos.Features:ActivateControl) < prototype(Neos.Fusion:Compon
 
   renderer = Neos.Fusion:Case {
     configurable {
-      condition = ${props.feature.hasOptions}
+      condition = ${props.feature.options}
       renderer = afx`
-        <NeosBE:Button icon="toggle-on" isSuccess={props.isSuccess} content={props.content} action="activateForm" arguments={{featureId: props.feature.id.value}} />
+        <NeosBE:Button icon="toggle-on" isSuccess={props.isSuccess} content={String.isBlank(props.content) ? null : props.content + '...'} action="activateForm" arguments={{featureId: props.feature.id.value}} />
       `
     }
     optionless {
