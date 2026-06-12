@@ -13,14 +13,15 @@ use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureImplementationFact
 /**
  * Builds an {@see ActivateNodeTypeFeature} from factory options.
  *
- * Required option:
- *   nodeType: 'Vendor.Package:MyDocumentType'
+ * Required option (mutually exclusive, at least one must be set):
+ *   nodeType:  'Vendor.Package:MyDocumentType'                        – single node type
+ *   nodeTypes: ['Vendor.Package:Foo', 'Vendor.Package:Bar']           – multiple node types
  *
  * Optional options (mutually exclusive):
  *   filePath: '/absolute/path/to/NodeTypes.Features.yaml'  – fully custom file path
  *   fileName: 'NodeTypes.Custom.yaml'                      – filename inside $defaultConfigurationPath
  *
- * When neither is given, defaults to `<defaultConfigurationPath>/NodeTypes.Features.yaml`.
+ * When neither filePath nor fileName is given, defaults to `<defaultConfigurationPath>/NodeTypes.Features.yaml`.
  *
  * $defaultConfigurationPath is injected via Flow's object framework (defaults to FLOW_PATH_CONFIGURATION).
  * Override it globally in Objects.yaml:
@@ -37,12 +38,27 @@ final readonly class ActivateNodeTypeFeatureFactory implements FeatureImplementa
 
     public function create(array $options): FeatureImplementation
     {
-        Assert::keyExists($options, 'nodeType', 'ActivateNodeTypeFeature requires a "nodeType" option');
-        Assert::string($options['nodeType'], 'ActivateNodeTypeFeature option "nodeType" must be a string, given: %s');
+        Assert::false(
+            isset($options['nodeType']) && isset($options['nodeTypes']),
+            'ActivateNodeTypeFeature options "nodeType" and "nodeTypes" are mutually exclusive',
+        );
+        Assert::true(
+            isset($options['nodeType']) || isset($options['nodeTypes']),
+            'ActivateNodeTypeFeature requires either a "nodeType" or a "nodeTypes" option',
+        );
         Assert::false(
             isset($options['filePath']) && isset($options['fileName']),
             'ActivateNodeTypeFeature options "filePath" and "fileName" are mutually exclusive',
         );
+
+        if (isset($options['nodeType'])) {
+            Assert::string($options['nodeType'], 'ActivateNodeTypeFeature option "nodeType" must be a string, given: %s');
+            $nodeTypeNames = [NodeTypeName::fromString($options['nodeType'])];
+        } else {
+            Assert::isArray($options['nodeTypes'], 'ActivateNodeTypeFeature option "nodeTypes" must be an array, given: %s');
+            Assert::allString($options['nodeTypes'], 'ActivateNodeTypeFeature option "nodeTypes" must be a list of strings, given: %s');
+            $nodeTypeNames = array_map(NodeTypeName::fromString(...), $options['nodeTypes']);
+        }
 
         if (isset($options['filePath'])) {
             Assert::string($options['filePath'], 'ActivateNodeTypeFeature option "filePath" must be a string, given: %s');
@@ -53,6 +69,6 @@ final readonly class ActivateNodeTypeFeatureFactory implements FeatureImplementa
             $configFile = new YamlConfigurationFile(Files::concatenatePaths([$this->defaultConfigurationPath, $fileName]));
         }
 
-        return new ActivateNodeTypeFeature(NodeTypeName::fromString($options['nodeType']), $configFile);
+        return new ActivateNodeTypeFeature($nodeTypeNames, $configFile);
     }
 }
