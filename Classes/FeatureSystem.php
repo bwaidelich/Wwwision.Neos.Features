@@ -15,6 +15,7 @@ use Wwwision\Neos\Features\Model\Feature\Features;
 use Wwwision\Neos\Features\Model\Feature\FeatureStateConflict;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroups;
+use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureStates;
 use Wwwision\Neos\Features\Ports\ForProvidingFeatureConfiguration;
@@ -29,6 +30,7 @@ final class FeatureSystem
     public function __construct(
         private readonly ForProvidingFeatureConfiguration $forProvidingFeatureConfiguration,
         private readonly ForStoringFeatureStates $forStoringFeatureStates,
+        private readonly FeatureContext $featureContext,
     ) {}
 
     public function getFeatureGroups(): FeatureGroups
@@ -67,13 +69,13 @@ final class FeatureSystem
         if (!$featureDefinition->hasOptions()) {
             Assert::isEmpty($options, sprintf('Feature "%s" takes no options', $featureId->value));
             // TODO: Evaluate result
-            ($featureDefinition->onActivate)();
+            ($featureDefinition->onActivate)($this->featureContext);
             $this->storeAndInvalidate(new FeatureState($featureId, true, []));
             return;
         }
         $featureOptions = $this->instantiateOptions($featureDefinition, $options);
         // TODO: Evaluate result
-        ($featureDefinition->onActivate)($featureOptions);
+        ($featureDefinition->onActivate)($this->featureContext, $featureOptions);
 
         $this->storeAndInvalidate(new FeatureState($featureId, true, $this->normalizeOptions($featureOptions)));
     }
@@ -98,7 +100,7 @@ final class FeatureSystem
         $newFeatureOptions = $this->instantiateOptions($featureDefinition, $newOptions);
 
         // TODO: Evaluate result
-        $onUpdateOptions($previousFeatureOptions, $newFeatureOptions);
+        $onUpdateOptions($this->featureContext, $previousFeatureOptions, $newFeatureOptions);
 
         $this->storeAndInvalidate(new FeatureState($featureId, true, $this->normalizeOptions($newFeatureOptions)));
     }
@@ -116,9 +118,9 @@ final class FeatureSystem
         }
         // TODO: Evaluate result
         if ($featureDefinition->hasOptions()) {
-            ($featureDefinition->onDeactivate)($featureDefinition->parseOptions($currentState->options));
+            ($featureDefinition->onDeactivate)($this->featureContext, $featureDefinition->parseOptions($currentState->options));
         } else {
-            ($featureDefinition->onDeactivate)();
+            ($featureDefinition->onDeactivate)($this->featureContext);
         }
         if ($removeState) {
             $this->forStoringFeatureStates->remove($featureId);

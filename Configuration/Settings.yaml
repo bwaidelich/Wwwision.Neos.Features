@@ -5,3 +5,8 @@ Wwwision:
       features: []
       states:
         path: '%FLOW_PATH_DATA%Features/FeatureStates.yaml'
+      configurationFiles:
+        settings:
+          path: '%FLOW_PATH_CONFIGURATION%Settings.Features.yaml'
+        nodeTypes:
+          path: '%FLOW_PATH_CONFIGURATION%NodeTypes.Features.yaml'

@@ -16,8 +16,10 @@ use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\FeatureStateConflict;
 use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
+use Wwwision\Neos\Features\Model\CommonFeatures\YamlConfigurationFile;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinitions;
+use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
 use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureConfiguration;
 use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureStates;
@@ -42,13 +44,14 @@ final class FeatureSystemTest extends TestCase
         return new FeatureSystem(
             new InMemoryFeatureConfiguration(FeatureDefinitions::fromArray($definitions)),
             $this->states,
+            new FeatureContext(new YamlConfigurationFile('/dev/null'), new YamlConfigurationFile('/dev/null')),
         );
     }
 
     /**
-     * @param callable(FeatureOptions): FeatureActivateResult|null $onActivate
-     * @param callable(FeatureOptions, FeatureOptions): FeatureUpdateOptionsResult|null $onUpdateOptions
-     * @param callable(FeatureOptions): FeatureDeactivateResult|null $onDeactivate
+     * @param callable(FeatureContext, FeatureOptions): FeatureActivateResult|null $onActivate
+     * @param callable(FeatureContext, FeatureOptions, FeatureOptions): FeatureUpdateOptionsResult|null $onUpdateOptions
+     * @param callable(FeatureContext, FeatureOptions): FeatureDeactivateResult|null $onDeactivate
      * @param list<string> $dependsOn
      * @return FeatureDefinition<FeatureOptions>
      */
@@ -64,16 +67,16 @@ final class FeatureSystemTest extends TestCase
             id: $id,
             name: ucfirst($id),
             optionsClassName: $optionsClassName,
-            onActivate: $onActivate ?? static fn(FeatureOptions $o): FeatureActivateResult => FeatureActivateResult::success(),
-            onUpdateOptions: $onUpdateOptions ?? static fn(FeatureOptions $previous, FeatureOptions $new): FeatureUpdateOptionsResult => FeatureUpdateOptionsResult::success(),
-            onDeactivate: $onDeactivate ?? static fn(FeatureOptions $o): FeatureDeactivateResult => FeatureDeactivateResult::success(),
+            onActivate: $onActivate ?? static fn(FeatureContext $c, FeatureOptions $o): FeatureActivateResult => FeatureActivateResult::success(),
+            onUpdateOptions: $onUpdateOptions ?? static fn(FeatureContext $c, FeatureOptions $previous, FeatureOptions $new): FeatureUpdateOptionsResult => FeatureUpdateOptionsResult::success(),
+            onDeactivate: $onDeactivate ?? static fn(FeatureContext $c, FeatureOptions $o): FeatureDeactivateResult => FeatureDeactivateResult::success(),
             dependsOn: $dependsOn,
         );
     }
 
     /**
-     * @param callable(): FeatureActivateResult|null $onActivate
-     * @param callable(): FeatureDeactivateResult|null $onDeactivate
+     * @param callable(FeatureContext): FeatureActivateResult|null $onActivate
+     * @param callable(FeatureContext): FeatureDeactivateResult|null $onDeactivate
      * @param list<string> $dependsOn
      * @return FeatureDefinition<FeatureOptions>
      */
@@ -86,8 +89,8 @@ final class FeatureSystemTest extends TestCase
         return FeatureDefinition::createOptionless(
             id: $id,
             name: ucfirst($id),
-            onActivate: $onActivate ?? static fn(): FeatureActivateResult => FeatureActivateResult::success(),
-            onDeactivate: $onDeactivate ?? static fn(): FeatureDeactivateResult => FeatureDeactivateResult::success(),
+            onActivate: $onActivate ?? static fn(FeatureContext $c): FeatureActivateResult => FeatureActivateResult::success(),
+            onDeactivate: $onDeactivate ?? static fn(FeatureContext $c): FeatureDeactivateResult => FeatureDeactivateResult::success(),
             dependsOn: $dependsOn,
         );
     }
@@ -148,7 +151,7 @@ final class FeatureSystemTest extends TestCase
     {
         $activatedWith = null;
         $system = $this->featureSystem([
-            self::definition('a', onActivate: function (FeatureOptions $options) use (&$activatedWith): FeatureActivateResult {
+            self::definition('a', onActivate: function (FeatureContext $context, FeatureOptions $options) use (&$activatedWith): FeatureActivateResult {
                 $activatedWith = $options;
                 return FeatureActivateResult::success();
             }),
@@ -194,7 +197,7 @@ final class FeatureSystemTest extends TestCase
         $this->markActive('a');
         $deactivated = false;
         $system = $this->featureSystem([
-            self::definition('a', onDeactivate: function (FeatureOptions $options) use (&$deactivated): FeatureDeactivateResult {
+            self::definition('a', onDeactivate: function (FeatureContext $context, FeatureOptions $options) use (&$deactivated): FeatureDeactivateResult {
                 $deactivated = true;
                 return FeatureDeactivateResult::success();
             }),
@@ -210,7 +213,7 @@ final class FeatureSystemTest extends TestCase
         $this->states->store(new FeatureState(FeatureId::fromString('a'), true, ['message' => 'stored', 'threshold' => 5]));
         $deactivatedWith = null;
         $system = $this->featureSystem([
-            self::definition('a', onDeactivate: function (FeatureOptions $options) use (&$deactivatedWith): FeatureDeactivateResult {
+            self::definition('a', onDeactivate: function (FeatureContext $context, FeatureOptions $options) use (&$deactivatedWith): FeatureDeactivateResult {
                 $deactivatedWith = $options;
                 return FeatureDeactivateResult::success();
             }),
@@ -318,7 +321,7 @@ final class FeatureSystemTest extends TestCase
         $this->markActive('a');
         $activated = false;
         $system = $this->featureSystem([
-            self::definition('a', onActivate: function (FeatureOptions $options) use (&$activated): FeatureActivateResult {
+            self::definition('a', onActivate: function (FeatureContext $context, FeatureOptions $options) use (&$activated): FeatureActivateResult {
                 $activated = true;
                 return FeatureActivateResult::success();
             }),
@@ -387,7 +390,7 @@ final class FeatureSystemTest extends TestCase
         $previous = null;
         $new = null;
         $system = $this->featureSystem([
-            self::definition('a', onUpdateOptions: function (FeatureOptions $p, FeatureOptions $n) use (&$previous, &$new): FeatureUpdateOptionsResult {
+            self::definition('a', onUpdateOptions: function (FeatureContext $context, FeatureOptions $p, FeatureOptions $n) use (&$previous, &$new): FeatureUpdateOptionsResult {
                 $previous = $p;
                 $new = $n;
                 return FeatureUpdateOptionsResult::success();
@@ -447,7 +450,7 @@ final class FeatureSystemTest extends TestCase
         $this->states->store(new FeatureState(FeatureId::fromString('a'), false, ['message' => 'old']));
         $updated = false;
         $system = $this->featureSystem([
-            self::definition('a', onUpdateOptions: function (FeatureOptions $p, FeatureOptions $n) use (&$updated): FeatureUpdateOptionsResult {
+            self::definition('a', onUpdateOptions: function (FeatureContext $context, FeatureOptions $p, FeatureOptions $n) use (&$updated): FeatureUpdateOptionsResult {
                 $updated = true;
                 return FeatureUpdateOptionsResult::success();
             }),

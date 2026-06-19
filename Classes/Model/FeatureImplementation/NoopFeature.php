@@ -12,13 +12,13 @@ use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
  */
 final readonly class NoopFeature implements OptionlessFeatureImplementation
 {
-    public function activate(): FeatureActivateResult
+    public function activate(FeatureContext $context): FeatureActivateResult
     {
         // no op
         return FeatureActivateResult::success();
     }
 
-    public function deactivate(): FeatureDeactivateResult
+    public function deactivate(FeatureContext $context): FeatureDeactivateResult
     {
         // no op
         return FeatureDeactivateResult::success();

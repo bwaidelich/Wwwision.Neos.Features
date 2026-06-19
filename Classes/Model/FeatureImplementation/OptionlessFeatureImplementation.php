@@ -13,7 +13,7 @@ use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
  */
 interface OptionlessFeatureImplementation extends FeatureImplementation
 {
-    public function activate(): FeatureActivateResult;
+    public function activate(FeatureContext $context): FeatureActivateResult;
 
-    public function deactivate(): FeatureDeactivateResult;
+    public function deactivate(FeatureContext $context): FeatureDeactivateResult;
 }

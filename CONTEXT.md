@@ -19,12 +19,24 @@ Static parameters that parameterise how a feature implementation is constructed:
 _Avoid_: using the bare word "options" for these; always qualify as "factory options".
 
 **Configurable feature**:
-A feature whose implementation declares typed **options** and whose lifecycle methods receive them: `activate(options)`, `updateOptions(previous, new)`, `deactivate(previous)`.
+A feature whose implementation declares typed **options** and whose lifecycle methods receive them alongside the **feature context**: `activate(context, options)`, `updateOptions(context, previous, new)`, `deactivate(context, previous)`.
 _Avoid_: feature with options
 
 **Optionless feature**:
-A feature whose implementation takes no options. Its interface carries only `activate()` and `deactivate()` — no `optionsClassName`, no `updateOptions` (there is nothing to update). The default `NoopFeature` (a feature declared with no `objectName`) is the canonical optionless implementation.
+A feature whose implementation takes no options. Its interface carries only `activate(context)` and `deactivate(context)` — no `optionsClassName`, no `updateOptions` (there is nothing to update). The default `NoopFeature` (a feature declared with no `objectName`) is the canonical optionless implementation.
 _Avoid_: feature without options, no-options feature, empty-options feature
+
+**Feature context**:
+The object passed as the first argument to every lifecycle method (`activate`, `updateOptions`, `deactivate`), giving a feature implementation access to the **settings file** and **nodeTypes file** without writing its own factory to construct them.
+_Avoid_: lifecycle context
+
+**Settings file**:
+The single shared YAML file (default `<FLOW_PATH_CONFIGURATION>/Settings.Features.yaml`, path configurable) that feature implementations write Neos/Flow Settings overrides into via the **feature context**. One file shared by all features — not to be confused with a feature's own Settings-declared definition.
+_Avoid_: settings (bare word), config file
+
+**NodeTypes file**:
+The single shared YAML file (default `<FLOW_PATH_CONFIGURATION>/NodeTypes.Features.yaml`, path configurable) that feature implementations write NodeTypes overrides into via the **feature context**.
+_Avoid_: nodetypes config, config file
 
 **Options**:
 A feature's activation-time configuration: a typed, readonly shape whose schema drives the activation/update form, collected per `FeatureState`. Only configurable features have options. Distinct from build-time **factory options**.

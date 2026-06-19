@@ -7,11 +7,13 @@ namespace Wwwision\Neos\Features\Model\CommonFeatures;
 use Neos\ContentRepository\Domain\NodeType\NodeTypeName;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
+use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext;
 use Wwwision\Neos\Features\Model\FeatureImplementation\OptionlessFeatureImplementation;
 
 /**
  * A reusable optionless feature that makes one or more (otherwise abstract) document node types available by writing
- * overrides to a YAML configuration file. Reused across features for different node types via {@see ActivateNodeTypeFeatureFactory}.
+ * overrides to the {@see FeatureContext}'s NodeTypes file. Reused across features for different node types via
+ * {@see ActivateNodeTypeFeatureFactory}.
  */
 final readonly class ActivateNodeTypeFeature implements OptionlessFeatureImplementation
 {
@@ -20,22 +22,17 @@ final readonly class ActivateNodeTypeFeature implements OptionlessFeatureImpleme
      */
     public function __construct(
         public array $nodeTypeNames,
-        private YamlConfigurationFile $configFile,
     ) {}
 
-    public function activate(): FeatureActivateResult
+    public function activate(FeatureContext $context): FeatureActivateResult
     {
-        $this->configFile->setMany(
-            array_map(static fn(NodeTypeName $n) => [[$n->getValue()], ['abstract' => false]], $this->nodeTypeNames),
-        );
+        $context->activateNodeTypes(...$this->nodeTypeNames);
         return FeatureActivateResult::success();
     }
 
-    public function deactivate(): FeatureDeactivateResult
+    public function deactivate(FeatureContext $context): FeatureDeactivateResult
     {
-        $this->configFile->unsetMany(
-            array_map(static fn(NodeTypeName $n) => [$n->getValue()], $this->nodeTypeNames),
-        );
+        $context->deactivateNodeTypes(...$this->nodeTypeNames);
         return FeatureDeactivateResult::success();
     }
 }

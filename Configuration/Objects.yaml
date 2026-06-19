@@ -10,6 +10,17 @@ Wwwision\Neos\Features\Adapter\ForStoringFeatureStatesViaYaml:
     1:
       setting: Wwwision.Neos.Features.states.path
 
+Wwwision\Neos\Features\Factory\FeatureContextFactory:
+  arguments:
+    1:
+      setting: Wwwision.Neos.Features.configurationFiles.settings.path
+    2:
+      setting: Wwwision.Neos.Features.configurationFiles.nodeTypes.path
+
+Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext:
+  scope: singleton
+  factoryObjectName: Wwwision\Neos\Features\Factory\FeatureContextFactory
+
 Wwwision\Neos\Features\FeatureSystem:
   scope: singleton
   factoryObjectName: Wwwision\Neos\Features\Factory\FeatureSystemFactory

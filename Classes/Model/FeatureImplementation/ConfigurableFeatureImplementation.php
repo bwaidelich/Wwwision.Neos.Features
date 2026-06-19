@@ -24,16 +24,16 @@ interface ConfigurableFeatureImplementation extends FeatureImplementation
     /**
      * @param TOptions $options
      */
-    public function activate(FeatureOptions $options): FeatureActivateResult;
+    public function activate(FeatureContext $context, FeatureOptions $options): FeatureActivateResult;
 
     /**
      * @param TOptions $previousOptions
      * @param TOptions $newOptions
      */
-    public function updateOptions(FeatureOptions $previousOptions, FeatureOptions $newOptions): FeatureUpdateOptionsResult;
+    public function updateOptions(FeatureContext $context, FeatureOptions $previousOptions, FeatureOptions $newOptions): FeatureUpdateOptionsResult;
 
     /**
      * @param TOptions $previousOptions
      */
-    public function deactivate(FeatureOptions $previousOptions): FeatureDeactivateResult;
+    public function deactivate(FeatureContext $context, FeatureOptions $previousOptions): FeatureDeactivateResult;
 }

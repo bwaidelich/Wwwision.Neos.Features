@@ -14,6 +14,7 @@ use Wwwision\Neos\Features\Model\Feature\FeatureIds;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupId;
+use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext;
 use Wwwision\Types\Options;
 use Wwwision\Types\Parser;
 use Wwwision\Types\Schema\ShapeSchema;
@@ -25,9 +26,9 @@ final readonly class FeatureDefinition
 {
     /**
      * @param class-string<TOptions>|null $optionsClassName null for optionless features
-     * @param Closure(TOptions): FeatureActivateResult|Closure(): FeatureActivateResult $onActivate
-     * @param Closure(TOptions, TOptions): FeatureUpdateOptionsResult|null $onUpdateOptions null for optionless features
-     * @param Closure(TOptions): FeatureDeactivateResult|Closure(): FeatureDeactivateResult $onDeactivate
+     * @param Closure(FeatureContext, TOptions): FeatureActivateResult|Closure(FeatureContext): FeatureActivateResult $onActivate
+     * @param Closure(FeatureContext, TOptions, TOptions): FeatureUpdateOptionsResult|null $onUpdateOptions null for optionless features
+     * @param Closure(FeatureContext, TOptions): FeatureDeactivateResult|Closure(FeatureContext): FeatureDeactivateResult $onDeactivate
      */
     private function __construct(
         public FeatureId $id,
@@ -47,9 +48,9 @@ final readonly class FeatureDefinition
      *
      * @template TO of FeatureOptions
      * @param class-string<TO> $optionsClassName
-     * @param callable(TO): FeatureActivateResult $onActivate
-     * @param callable(TO, TO): FeatureUpdateOptionsResult $onUpdateOptions
-     * @param callable(TO): FeatureDeactivateResult $onDeactivate
+     * @param callable(FeatureContext, TO): FeatureActivateResult $onActivate
+     * @param callable(FeatureContext, TO, TO): FeatureUpdateOptionsResult $onUpdateOptions
+     * @param callable(FeatureContext, TO): FeatureDeactivateResult $onDeactivate
      * @param FeatureIds|array<FeatureId|string>|null $dependsOn
      * @return self<TO>
      */
@@ -82,8 +83,8 @@ final readonly class FeatureDefinition
     /**
      * Creates a definition for an optionless feature (one that takes no options and cannot have its options updated).
      *
-     * @param callable(): FeatureActivateResult $onActivate
-     * @param callable(): FeatureDeactivateResult $onDeactivate
+     * @param callable(FeatureContext): FeatureActivateResult $onActivate
+     * @param callable(FeatureContext): FeatureDeactivateResult $onDeactivate
      * @param FeatureIds|array<FeatureId|string>|null $dependsOn
      * @return self<FeatureOptions>
      */
