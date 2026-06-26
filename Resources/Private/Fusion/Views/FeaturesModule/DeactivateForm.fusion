@@ -7,6 +7,6 @@ Wwwision.Neos.Features.FeaturesModuleController.deactivateForm = NeosBE:Module {
 
   footer = afx`
     <NeosBE:Button content="Abbrechen" icon="backward" action="index" />
-    <NeosBE:Button form="form-deactivate-feature" isDangerous={true} content="Feature deaktivieren" icon="toggle-off" />
+    <NeosBE:Button form="form-deactivate-feature" isDangerous={true} content="Feature deaktivieren" icon="toggle-on" />
   `
 }

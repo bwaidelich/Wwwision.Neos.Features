@@ -12,14 +12,14 @@ prototype(Wwwision.Neos.Features:ActivateControl) < prototype(Neos.Fusion:Compon
     configurable {
       condition = ${props.feature.options}
       renderer = afx`
-        <NeosBE:Button icon="toggle-on" isSuccess={props.isSuccess} content={String.isBlank(props.content) ? null : props.content + '...'} action="activateForm" arguments={{featureId: props.feature.id.value}} />
+        <NeosBE:Button icon="toggle-off" isSuccess={props.isSuccess} content={String.isBlank(props.content) ? null : props.content + '...'} action="activateForm" arguments={{featureId: props.feature.id.value}} />
       `
     }
     optionless {
       condition = true
       renderer = afx`
         <Neos.Fusion.Form:Form form.enableReferrer={false} form.enableTrustedProperties={false} form.target.action="activate" form.target.arguments={{featureId: props.feature.id.value}} attributes.style="display: inline">
-          <NeosBE:Button icon="toggle-on" isSuccess={props.isSuccess} content={props.content} attributes.onclick="event.stopPropagation()" />
+          <NeosBE:Button icon="toggle-off" isSuccess={props.isSuccess} content={props.content} attributes.onclick="event.stopPropagation()" />
         </Neos.Fusion.Form:Form>
       `
     }

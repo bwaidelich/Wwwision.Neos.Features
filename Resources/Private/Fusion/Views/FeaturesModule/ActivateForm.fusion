@@ -8,6 +8,6 @@ Wwwision.Neos.Features.FeaturesModuleController.activateForm = NeosBE:Module {
 
   footer = afx`
     <NeosBE:Button content="Abbrechen" icon="backward" action="index" />
-    <NeosBE:Button form="form-activate-feature" isSuccess={true} content="Feature aktivieren" icon="toggle-on" />
+    <NeosBE:Button form="form-activate-feature" isSuccess={true} content="Feature aktivieren" icon="toggle-off" />
   `
 }

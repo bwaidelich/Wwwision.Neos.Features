@@ -52,9 +52,9 @@ Wwwision.Neos.Features.FeaturesModuleController.show = NeosBE:Module {
   footer = afx`
     <NeosBE:Button content="Zurück" icon="backward" action="index" />
     <Wwwision.Neos.Features:ActivateControl @if={feature.activatable} feature={feature} isSuccess={true} content="Feature aktivieren" />
-    <NeosBE:Button @if={!feature.active && !feature.activatable} attributes.disabled="disabled" content="Feature aktivieren..." icon="toggle-on" attributes.title={'Zuerst aktivieren: ' + feature.unmetDependencies} />
-    <NeosBE:Button @if={feature.deactivatable} action="deactivateForm" arguments={{featureId: feature.id.value}} isDangerous={true} content="Feature deaktivieren..." icon="toggle-off" />
-    <NeosBE:Button @if={feature.active && !feature.deactivatable} attributes.disabled="disabled" content="Feature deaktivieren..." icon="toggle-off" attributes.title={'Wird benötigt von: ' + feature.activeDependents} />
+    <NeosBE:Button @if={!feature.active && !feature.activatable} attributes.disabled="disabled" content="Feature aktivieren..." icon="toggle-off" attributes.title={'Zuerst aktivieren: ' + feature.unmetDependencies} />
+    <NeosBE:Button @if={feature.deactivatable} action="deactivateForm" arguments={{featureId: feature.id.value}} isDangerous={true} content="Feature deaktivieren..." icon="toggle-on" />
+    <NeosBE:Button @if={feature.active && !feature.deactivatable} attributes.disabled="disabled" content="Feature deaktivieren..." icon="toggle-on" attributes.title={'Wird benötigt von: ' + feature.activeDependents} />
     <NeosBE:Button @if={feature.active && feature.options} action="updateOptionsForm" arguments={{featureId: feature.id.value}} content="Feature-Optionen anpassen..." icon="pencil" />
   `
 }
