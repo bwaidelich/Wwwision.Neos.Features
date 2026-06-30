@@ -31,7 +31,7 @@ final readonly class Feature
         public FeatureName $name,
         public FeatureDescription $description,
         public FeatureIcon|null $icon,
-        private string|null $optionsClassName,
+        public string|null $optionsClassName,
         public bool $active,
         public FeatureOptions|null $options,
         public FeatureGroupId|null $group,

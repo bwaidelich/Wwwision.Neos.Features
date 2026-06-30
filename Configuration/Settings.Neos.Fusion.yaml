@@ -1,0 +1,4 @@
+Neos:
+  Fusion:
+    defaultContext:
+      Wwwision.Neos.Features: Wwwision\Neos\Features\Eel\FeaturesHelper

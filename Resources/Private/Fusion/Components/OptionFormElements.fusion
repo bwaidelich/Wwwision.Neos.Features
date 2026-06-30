@@ -2,8 +2,12 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
   optionsSchema = null
   namespace = null
 
+  @private {
+    fieldNamePrefix = ${'options.' + (props.namespace == null ? '' : props.namespace + '.')}
+    optionsSchema = ${Wwwision.Neos.Features.unwrapSchema(props.optionsSchema)}
+  }
   renderer = Neos.Fusion:Loop {
-    items = ${props.optionsSchema.propertySchemas}
+    items = ${private.optionsSchema.propertySchemas}
     itemName = 'optionSchema'
     itemKey = 'optionName'
 
@@ -21,10 +25,14 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
         @position = 'end 9999'
         condition = ${true}
         renderer = afx`
-          <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={String.pregReplace(props.namespace == null ? optionName : props.namespace + '.' + optionName, '/\.([^.]+)/', '[$1]')} label={String.firstLetterToUpperCase(optionName) + (Type.className(optionSchema) == 'Wwwision\\Types\\Schema\\OptionalSchema' ? '' : '*')}>
-            <small @if={optionSchema.description}>{String.nl2br(optionSchema.description)}</small>
+          <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={String.pregReplace(private.fieldNamePrefix + optionName, '/\.([^.]+)/', '[$1]')} label={String.firstLetterToUpperCase(optionName) + (Wwwision.Neos.Features.isOptionalSchema(optionSchema) ? '' : '*')}>
+            <small @if={props.customDescription || optionSchema.description}>{String.nl2br(props.customDescription || optionSchema.description)}</small>
             <div class="neos row">
-              <Wwwision.Neos.Features:OptionFormElementInput schema={optionSchema} />
+              <Wwwision.Neos.Features:OptionFormElement
+                parentSchema={private.optionsSchema}
+                schema={optionSchema}
+                propertyName={optionName}
+              />
             </div>
           </Neos.Fusion.Form:Neos.BackendModule.FieldContainer>
         `
@@ -33,14 +41,76 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
   }
 }
 
-prototype(Wwwision.Neos.Features:OptionFormElementInput) < prototype(Neos.Fusion:Component) {
+prototype(Wwwision.Neos.Features:OptionFormElement) < prototype(Neos.Fusion:Component) {
 
+  parentSchema = null
+  schema = null
+  propertyName = null
+
+  @private {
+    isOptional = ${Wwwision.Neos.Features.isOptionalSchema(props.schema)}
+    schema = ${Wwwision.Neos.Features.unwrapSchema(props.schema)}
+    defaultValue = ${Wwwision.Neos.Features.getDefaultValue(props.parentSchema, props.propertyName)}
+  }
+  renderer = Neos.Fusion:Case {
+    optional {
+      condition = ${private.isOptional}
+      renderer = Wwwision.Neos.Features:OptionFormElement.EditorSwitch {
+        isOptional = ${private.isOptional}
+        schema = ${private.schema}
+        defaultValue = ${private.defaultValue}
+      }
+    }
+    default {
+      condition = true
+      renderer = Wwwision.Neos.Features:OptionFormElement.Editor {
+        isOptional = ${private.isOptional}
+        schema = ${private.schema}
+      }
+    }
+  }
+}
+
+prototype(Wwwision.Neos.Features:OptionFormElement.EditorSwitch) < prototype(Neos.Fusion:Component) {
+  isOptional = false
+  schema = null
+  defaultValue = null
+
+  renderer = Wwwision.Neos.Features:Option {
+    preview = Wwwision.Neos.Features:FeatureOptions.Value {
+      value = ${props.defaultValue}
+    }
+    editor = Wwwision.Neos.Features:OptionFormElement.Editor {
+      isOptional = ${props.isOptional}
+      schema = ${props.schema}
+    }
+    showEditor = ${field.currentValue != null}
+  }
+}
+
+
+prototype(Wwwision.Neos.Features:OptionFormElement.Editor) < prototype(Neos.Fusion:Component) {
+  isOptional = false
   schema = null
 
   renderer = Neos.Fusion:Renderer {
     @context {
-      isRequired = ${Type.className(props.schema) != 'Wwwision\\Types\\Schema\\OptionalSchema'}
-      schema = ${Type.className(props.schema) == 'Wwwision\\Types\\Schema\\OptionalSchema' ? props.schema.wrapped : props.schema}
+      isRequired = ${!props.isOptional}
+      schema = ${props.schema}
+    }
+    renderPath = '/Wwwision/Neos/Features/OptionEditor'
+  }
+}
+
+
+prototype(Wwwision.Neos.Features:OptionFormElement.Editor) < prototype(Neos.Fusion:Component) {
+  isOptional = false
+  schema = null
+
+  renderer = Neos.Fusion:Renderer {
+    @context {
+      isRequired = ${!props.isOptional}
+      schema = ${props.schema}
     }
     renderPath = '/Wwwision/Neos/Features/OptionEditor'
   }

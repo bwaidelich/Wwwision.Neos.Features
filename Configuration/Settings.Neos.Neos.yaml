@@ -11,5 +11,7 @@ Neos:
             additionalResources:
               styleSheets:
                 - 'resource://Wwwision.Neos.ModuleComponents/Public/Styles/module.css'
+                - 'resource://Wwwision.Neos.Features/Public/Styles/module.css'
               javaScripts:
                 - 'resource://Wwwision.Neos.ModuleComponents/Public/Scripts/module.js'
+                - 'resource://Wwwision.Neos.Features/Public/Scripts/module.js'

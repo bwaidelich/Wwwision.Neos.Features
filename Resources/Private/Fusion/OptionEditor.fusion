@@ -62,9 +62,27 @@ Wwwision.Neos.Features.OptionEditor = Neos.Fusion:Case {
 
   fileUpload {
     condition = ${schema.extensions.x-feature-editor == 'fileUpload'}
-    renderer = afx`
-      <Neos.Fusion.Form:Input attributes.type="file" attributes.required={isRequired} attributes.accept={schema.extensions.x-feature-editor-options.accept} attributes.accept.@if={schema.extensions.x-feature-editor-options.accept}/>
-    `
+    renderer = Neos.Fusion:Case {
+      hasValue {
+        condition = ${field.currentValue != null}
+        renderer = Wwwision.Neos.Features:Option {
+          preview = afx`
+            ✔
+            <Neos.Fusion.Form:Hidden value={field.currentValueStringified} />
+          `
+          editor = afx`
+            <Neos.Fusion.Form:Input attributes.type="file" attributes.required={isRequired} attributes.accept={schema.extensions.x-feature-editor-options.accept} attributes.accept.@if={schema.extensions.x-feature-editor-options.accept}/>
+          `
+          showEditor = ${false}
+        }
+      }
+      default {
+        condition = true
+        renderer = afx`
+          <Neos.Fusion.Form:Input attributes.type="file" attributes.required={isRequired} attributes.accept={schema.extensions.x-feature-editor-options.accept} attributes.accept.@if={schema.extensions.x-feature-editor-options.accept}/>
+        `
+      }
+    }
   }
 
   enum {
@@ -92,6 +110,7 @@ Wwwision.Neos.Features.OptionEditor = Neos.Fusion:Case {
   boolean {
     condition = ${schema.type == 'boolean'}
     renderer = afx`
+      <Neos.Fusion.Form:Hidden attributes.value="0" />
       <Neos.Fusion.Form:Checkbox attributes.value="1" attributes.checked={field.currentValue} attributes.required={isRequired} />`
   }
 

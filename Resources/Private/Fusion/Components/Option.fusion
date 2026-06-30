@@ -1,0 +1,25 @@
+prototype(Wwwision.Neos.Features:Option) < prototype(Neos.Fusion:Component) {
+  preview = ''
+  editor = ''
+  showEditor = ${true}
+
+  renderer = afx`
+    <div class="option">
+      <div class={'option-preview' + (props.showEditor ? ' neos-hide' : '')}>
+        {props.preview}&nbsp;
+        <a href="#" class="show-option-editor"><NeosBE:Icon icon="pencil" /></a>
+      </div>
+      <div class={'option-editor' + (props.showEditor ? '' : ' neos-hide')}>
+        <div class="option-editor-container">
+          <Neos.Fusion:Fragment @if.showEditor={props.showEditor}>
+            {props.editor}
+          </Neos.Fusion:Fragment>
+        </div>
+        <a href="#" class="hide-option-editor"><NeosBE:Icon icon="x" /></a>
+        <template>
+          {props.editor}
+        </template>
+      </div>
+    </div>
+  `
+}
