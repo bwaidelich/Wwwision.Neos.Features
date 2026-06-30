@@ -150,7 +150,7 @@ final class FeaturesModuleController extends AbstractModuleController
                     throw new RuntimeException(sprintf('Directory "%s" was not created', $concurrentDirectory));
                 }
                 $optionValue->moveTo($targetPath);
-                $options[$optionName] = $targetPath;
+                $result[$optionName] = $targetPath;
                 continue;
             }
             if ($optionValue === '') {
