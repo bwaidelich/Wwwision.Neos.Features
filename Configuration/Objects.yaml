@@ -16,6 +16,8 @@ Wwwision\Neos\Features\Factory\FeatureContextFactory:
       setting: Wwwision.Neos.Features.configurationFiles.settings.path
     2:
       setting: Wwwision.Neos.Features.configurationFiles.nodeTypes.path
+    3:
+      setting: Neos.Flow
 
 Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext:
   scope: singleton
