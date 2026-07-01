@@ -16,7 +16,7 @@ final class NoopFeatureTest extends TestCase
 {
     private function context(): FeatureContext
     {
-        return new FeatureContext(new YamlConfigurationFile('/dev/null'), new YamlConfigurationFile('/dev/null'));
+        return new FeatureContext(new YamlConfigurationFile('/dev/null'), new YamlConfigurationFile('/dev/null'), []);
     }
 
     public function test_is_an_optionless_feature_implementation(): void

@@ -44,7 +44,7 @@ final class FeatureSystemTest extends TestCase
         return new FeatureSystem(
             new InMemoryFeatureConfiguration(FeatureDefinitions::fromArray($definitions)),
             $this->states,
-            new FeatureContext(new YamlConfigurationFile('/dev/null'), new YamlConfigurationFile('/dev/null')),
+            new FeatureContext(new YamlConfigurationFile('/dev/null'), new YamlConfigurationFile('/dev/null'), []),
         );
     }
 

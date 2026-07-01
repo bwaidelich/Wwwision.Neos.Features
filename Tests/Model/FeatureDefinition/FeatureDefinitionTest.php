@@ -25,7 +25,7 @@ final class FeatureDefinitionTest extends TestCase
 {
     private static function context(): FeatureContext
     {
-        return new FeatureContext(new YamlConfigurationFile('/dev/null'), new YamlConfigurationFile('/dev/null'));
+        return new FeatureContext(new YamlConfigurationFile('/dev/null'), new YamlConfigurationFile('/dev/null'), []);
     }
 
     /**
