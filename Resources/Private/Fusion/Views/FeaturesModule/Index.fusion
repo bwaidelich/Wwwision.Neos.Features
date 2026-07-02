@@ -14,10 +14,13 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
       </NeosBE:Table.Head>
       <Neos.Fusion:Loop items={sections} itemName="section">
         <NeosBE:Table.FolderRow>
+          <NeosBE:Table.Cell attributes.title="Alle Features dieser Gruppe für Batch-Aktivierung auswählen">
+            <input @if={section.hasInactiveFeatures} type="checkbox" data-select-group={"feature_group_" + section.group.id} />
+          </NeosBE:Table.Cell>
           <NeosBE:Table.Cell>
             <NeosBE:Icon icon={section.group.icon ? section.group.icon : 'cube'} />
           </NeosBE:Table.Cell>
-          <NeosBE:Table.Cell attributes.colspan="4">
+          <NeosBE:Table.Cell attributes.colspan="3">
             {section.group ? section.group.name : 'Sonstige'}
             <small @if={section.group.description}>
                 &nbsp;–&nbsp;{String.nl2br(section.group.description)}
@@ -39,7 +42,7 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
           <Neos.Fusion:Loop items={section.features} itemName="feature">
             <NeosBE:Table.ClickableRow target.action="show" target.arguments={{featureId: feature.id.value}}>
               <NeosBE:Table.Cell attributes.onclick="event.stopPropagation()" attributes.title="Für Batch-Aktivierung auswählen">
-                <input @if={!feature.active} type="checkbox" form="form-batch-activate" name={String.isBlank(request.argumentNamespace) ? 'featureIds[]' : request.argumentNamespace + '[featureIds][]'} value={feature.id.value} />
+                <input @if={!feature.active} type="checkbox" form="form-batch-activate" name={String.isBlank(request.argumentNamespace) ? 'featureIds[]' : request.argumentNamespace + '[featureIds][]'} value={feature.id.value} data-feature-select="1" data-depends-on={feature.dependsOn} />
               </NeosBE:Table.Cell>
               <NeosBE:Table.Cell>
                 <NeosBE:Icon icon={feature.icon ? feature.icon : 'cube'} />
@@ -64,9 +67,10 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
         </tbody>
       </Neos.Fusion:Loop>
     </NeosBE:Table>
+    <script defer src={StaticResource.uri('Wwwision.Neos.Features', 'Public/JavaScript/BatchActivation.js')}></script>
   `
 
   footer = afx`
-    <NeosBE:Button form="form-batch-activate" isPrimary={true} content="Ausgewählte Features aktivieren..." icon="toggle-off" />
+    <NeosBE:Button form="form-batch-activate" isPrimary={true} content="Ausgewählte Features aktivieren..." icon="toggle-off" attributes.disabled="disabled" />
   `
 }

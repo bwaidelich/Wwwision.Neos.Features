@@ -38,7 +38,7 @@ final class FeaturesModuleController extends AbstractModuleController
      *
      * @param Features $features
      * @param FeatureGroups $groups
-     * @return list<array{group: ?\Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroup, features: list<Feature<\Wwwision\Neos\Features\Model\Feature\FeatureOptions>>}>
+     * @return list<array{group: ?\Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroup, features: list<Feature<\Wwwision\Neos\Features\Model\Feature\FeatureOptions>>, hasInactiveFeatures: bool}>
      */
     private function buildSections(Features $features, FeatureGroups $groups): array
     {
@@ -55,13 +55,21 @@ final class FeaturesModuleController extends AbstractModuleController
         foreach ($groups as $group) {
             $groupedFeatures = $byGroup[$group->id->value] ?? [];
             if ($groupedFeatures !== []) {
-                $sections[] = ['group' => $group, 'features' => $groupedFeatures];
+                $sections[] = ['group' => $group, 'features' => $groupedFeatures, 'hasInactiveFeatures' => self::containsInactiveFeature($groupedFeatures)];
             }
         }
         if ($ungrouped !== []) {
-            $sections[] = ['group' => null, 'features' => $ungrouped];
+            $sections[] = ['group' => null, 'features' => $ungrouped, 'hasInactiveFeatures' => self::containsInactiveFeature($ungrouped)];
         }
         return $sections;
+    }
+
+    /**
+     * @param list<Feature<\Wwwision\Neos\Features\Model\Feature\FeatureOptions>> $features
+     */
+    private static function containsInactiveFeature(array $features): bool
+    {
+        return array_any($features, static fn(Feature $feature): bool => !$feature->active);
     }
 
     public function showAction(string $featureId): void
@@ -108,7 +116,7 @@ final class FeaturesModuleController extends AbstractModuleController
      * Renders the combined activation form for the given selection of features, expanded (server-side) with all
      * inactive features they transitively depend on.
      *
-     * @param array $featureIds
+     * @param array<string> $featureIds
      */
     public function batchActivateFormAction(array $featureIds = []): void
     {
@@ -134,7 +142,7 @@ final class FeaturesModuleController extends AbstractModuleController
     }
 
     /**
-     * @param array $featureIds
+     * @param array<string> $featureIds
      * @param array<string, array<string, mixed>> $options options per feature, indexed by feature id
      */
     public function batchActivateAction(array $featureIds = [], array $options = []): void
