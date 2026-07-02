@@ -1,0 +1,24 @@
+Wwwision.Neos.Features.FeaturesModuleController.batchActivateForm = NeosBE:Module {
+  content = afx`
+    <Neos.Fusion.Form:Form attributes.id="form-batch-activate" form.data.options={optionsByFeatureId} form.enableReferrer={false} form.enableTrustedProperties={false} form.target.action="batchActivate">
+      <p>Die folgenden Features werden aktiviert (Abhängigkeiten wurden automatisch ergänzt):</p>
+      <Neos.Fusion:Loop items={features} itemName="feature">
+        <Neos.Fusion.Form:Hidden field.name="featureIds" field.multiple={true} field.value={feature.id.value} />
+        <fieldset>
+          <legend>
+            <NeosBE:Icon icon={feature.icon ? feature.icon : 'cube'} />
+            &nbsp;{feature.name}&nbsp;
+            <NeosBE:Badge @if={Array.indexOf(requestedFeatureIds, feature.id.value) == -1}>Abhängigkeit – automatisch ergänzt</NeosBE:Badge>
+          </legend>
+          <p @if={feature.description}><small>{String.nl2br(feature.description)}</small></p>
+          <Wwwision.Neos.Features:OptionFormElements @if={feature.optionsClassName} optionsSchema={feature.optionsSchema} rootFieldName={'options[' + feature.id.value + ']'} />
+        </fieldset>
+      </Neos.Fusion:Loop>
+    </Neos.Fusion.Form:Form>
+  `
+
+  footer = afx`
+    <NeosBE:Button content="Abbrechen" icon="backward" action="index" />
+    <NeosBE:Button form="form-batch-activate" isSuccess={true} content="Features aktivieren" icon="toggle-off" />
+  `
+}

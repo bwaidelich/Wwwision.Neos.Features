@@ -1,8 +1,10 @@
 Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
   content = afx`
+    <Neos.Fusion.Form:Form attributes.id="form-batch-activate" form.target.action="batchActivateForm" form.enableReferrer={false} form.enableTrustedProperties={false} />
     <NeosBE:Table>
       <NeosBE:Table.Head>
         <NeosBE:Table.Row>
+          <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
           <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
           <NeosBE:Table.HeaderCell attributes.style="width: 20em" />
           <NeosBE:Table.HeaderCell attributes.style="width: 9em" />
@@ -15,7 +17,7 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
           <NeosBE:Table.Cell>
             <NeosBE:Icon icon={section.group.icon ? section.group.icon : 'cube'} />
           </NeosBE:Table.Cell>
-          <NeosBE:Table.Cell attributes.colspan="3">
+          <NeosBE:Table.Cell attributes.colspan="4">
             {section.group ? section.group.name : 'Sonstige'}
             <small @if={section.group.description}>
                 &nbsp;–&nbsp;{String.nl2br(section.group.description)}
@@ -28,6 +30,7 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
         <tbody id={"feature_group_" + section.group.id} style="border:none">
           <NeosBE:Table.Row>
             <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
+            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
             <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Feature"/>
             <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Status"/>
             <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Beschreibung"/>
@@ -35,6 +38,9 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
           </NeosBE:Table.Row>
           <Neos.Fusion:Loop items={section.features} itemName="feature">
             <NeosBE:Table.ClickableRow target.action="show" target.arguments={{featureId: feature.id.value}}>
+              <NeosBE:Table.Cell attributes.onclick="event.stopPropagation()" attributes.title="Für Batch-Aktivierung auswählen">
+                <input @if={!feature.active} type="checkbox" form="form-batch-activate" name={String.isBlank(request.argumentNamespace) ? 'featureIds[]' : request.argumentNamespace + '[featureIds][]'} value={feature.id.value} />
+              </NeosBE:Table.Cell>
               <NeosBE:Table.Cell>
                 <NeosBE:Icon icon={feature.icon ? feature.icon : 'cube'} />
               </NeosBE:Table.Cell>
@@ -61,5 +67,6 @@ Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
   `
 
   footer = afx`
+    <NeosBE:Button form="form-batch-activate" isPrimary={true} content="Ausgewählte Features aktivieren..." icon="toggle-off" />
   `
 }

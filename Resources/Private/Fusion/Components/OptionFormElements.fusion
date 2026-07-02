@@ -2,8 +2,13 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
   optionsSchema = null
   namespace = null
 
+  # Root of the field names; unlike the namespace/option path it is not converted to bracket notation, so it may
+  # contain brackets or dots itself (e.g. 'options[some.feature]' for batch forms with one options group per feature)
+  rootFieldName = 'options'
+
   @private {
-    fieldNamePrefix = ${'options.' + (props.namespace == null ? '' : props.namespace + '.')}
+    # dot-joined path of nested option names below the root (option names never contain dots)
+    fieldNameSuffix = ${props.namespace == null ? '' : '.' + props.namespace}
     optionsSchema = ${Wwwision.Neos.Features.unwrapSchema(props.optionsSchema)}
   }
   renderer = Neos.Fusion:Loop {
@@ -17,7 +22,7 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
         renderer = afx`
             <fieldset>
               <legend>{optionName} <small @if={optionSchema.description}>{String.nl2br(optionSchema.description)}</small></legend>
-              <Wwwision.Neos.Features:OptionFormElements optionsSchema={optionSchema} namespace={props.namespace == null ? optionName : props.namespace + '.' + optionName} />
+              <Wwwision.Neos.Features:OptionFormElements optionsSchema={optionSchema} namespace={props.namespace == null ? optionName : props.namespace + '.' + optionName} rootFieldName={props.rootFieldName} />
             </fieldset>
         `
       }
@@ -25,7 +30,7 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
         @position = 'end 9999'
         condition = ${true}
         renderer = afx`
-          <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={String.pregReplace(private.fieldNamePrefix + optionName, '/\.([^.]+)/', '[$1]')} label={String.firstLetterToUpperCase(optionName) + (Wwwision.Neos.Features.isOptionalSchema(optionSchema) ? '' : '*')}>
+          <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={props.rootFieldName + String.pregReplace(private.fieldNameSuffix + '.' + optionName, '/\.([^.]+)/', '[$1]')} label={String.firstLetterToUpperCase(optionName) + (Wwwision.Neos.Features.isOptionalSchema(optionSchema) ? '' : '*')}>
             <small @if={props.customDescription || optionSchema.description}>{String.nl2br(props.customDescription || optionSchema.description)}</small>
             <div class="neos row">
               <Wwwision.Neos.Features:OptionFormElement

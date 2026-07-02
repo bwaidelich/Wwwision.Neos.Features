@@ -10,10 +10,12 @@ use Neos\Neos\Controller\Module\AbstractModuleController;
 use Neos\Utility\Files;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
+use Throwable;
 use Wwwision\Neos\Features\FeatureSystem;
 use Wwwision\Neos\Features\Model\Feature\Feature;
 use Wwwision\Neos\Features\Model\Feature\FeatureDependencyViolation;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
+use Wwwision\Neos\Features\Model\Feature\FeatureIds;
 use Wwwision\Neos\Features\Model\Feature\Features;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroups;
 
@@ -99,6 +101,67 @@ final class FeaturesModuleController extends AbstractModuleController
             return;
         }
         $this->addFlashMessage('Feature "%s" aktiviert', 'success', messageArguments: [$feature->name->value]);
+        $this->redirect('index');
+    }
+
+    /**
+     * Renders the combined activation form for the given selection of features, expanded (server-side) with all
+     * inactive features they transitively depend on.
+     *
+     * @param array $featureIds
+     */
+    public function batchActivateFormAction(array $featureIds = []): void
+    {
+        if ($featureIds === []) {
+            $this->addFlashMessage('Es wurden keine Features ausgewählt', 'Hinweis', Message::SEVERITY_NOTICE);
+            $this->redirect('index');
+        }
+        $requestedFeatureIds = FeatureIds::fromArray($featureIds);
+        $features = $this->featureSystem->getFeaturesForActivation($requestedFeatureIds);
+        if (iterator_to_array($features) === []) {
+            $this->addFlashMessage('Alle ausgewählten Features sind bereits aktiv', 'Hinweis', Message::SEVERITY_NOTICE);
+            $this->redirect('index');
+        }
+        $optionsByFeatureId = [];
+        foreach ($features as $feature) {
+            if ($feature->options !== null) {
+                $optionsByFeatureId[$feature->id->value] = $feature->getNormalizedOptions();
+            }
+        }
+        $this->view->assign('features', $features);
+        $this->view->assign('requestedFeatureIds', $requestedFeatureIds->toStringArray());
+        $this->view->assign('optionsByFeatureId', $optionsByFeatureId);
+    }
+
+    /**
+     * @param array $featureIds
+     * @param array<string, array<string, mixed>> $options options per feature, indexed by feature id
+     */
+    public function batchActivateAction(array $featureIds = [], array $options = []): void
+    {
+        if ($featureIds === []) {
+            $this->addFlashMessage('Es wurden keine Features ausgewählt', 'Hinweis', Message::SEVERITY_NOTICE);
+            $this->redirect('index');
+        }
+        $processedOptions = [];
+        foreach ($options as $featureIdValue => $featureOptions) {
+            $processedOptions[$featureIdValue] = self::preProcessOptions(FeatureId::fromString($featureIdValue), $featureOptions);
+        }
+        try {
+            $result = $this->featureSystem->activateFeatures(FeatureIds::fromArray($featureIds), $processedOptions);
+        } catch (Throwable $exception) {
+            $this->addFlashMessage($exception->getMessage(), 'Fehler', Message::SEVERITY_ERROR);
+            $this->redirect('index');
+            return;
+        }
+        if (!$result->activated->isEmpty()) {
+            $this->addFlashMessage('Aktivierte Features: %s', 'success', messageArguments: [(string) $result->activated]);
+        } elseif (!$result->hasFailure()) {
+            $this->addFlashMessage('Keine Features aktiviert – alle ausgewählten Features waren bereits aktiv', 'Hinweis', Message::SEVERITY_NOTICE);
+        }
+        if ($result->failedFeatureId !== null) {
+            $this->addFlashMessage('Feature "%s" konnte nicht aktiviert werden: %s', 'Fehler', Message::SEVERITY_ERROR, messageArguments: [$result->failedFeatureId->value, $result->failureMessage]);
+        }
         $this->redirect('index');
     }
 

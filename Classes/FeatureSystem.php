@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Wwwision\Neos\Features;
 
 use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 use Webmozart\Assert\Assert;
+use Wwwision\Neos\Features\Model\Feature\BatchActivateResult;
 use Wwwision\Neos\Features\Model\Feature\Feature;
 use Wwwision\Neos\Features\Model\Feature\FeatureDependencyViolation;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
@@ -18,6 +21,7 @@ use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroups;
 use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureStates;
+use Wwwision\Neos\Features\Ports\ForFlushingCaches;
 use Wwwision\Neos\Features\Ports\ForProvidingFeatureConfiguration;
 use Wwwision\Neos\Features\Ports\ForStoringFeatureStates;
 use Wwwision\Types\Normalizer\Normalizer;
@@ -31,6 +35,7 @@ final class FeatureSystem
         private readonly ForProvidingFeatureConfiguration $forProvidingFeatureConfiguration,
         private readonly ForStoringFeatureStates $forStoringFeatureStates,
         private readonly FeatureContext $featureContext,
+        private readonly ForFlushingCaches $forFlushingCaches,
     ) {}
 
     public function getFeatureGroups(): FeatureGroups
@@ -58,6 +63,64 @@ final class FeatureSystem
      */
     public function activateFeature(FeatureId $featureId, array $options): void
     {
+        $this->performActivation($featureId, $options);
+        $this->forFlushingCaches->flushCaches();
+    }
+
+    /**
+     * The features that {@see activateFeatures()} would activate for the given selection: the inactive features
+     * of the selection plus, transitively, their inactive dependencies – ordered such that dependencies come
+     * before the features that require them.
+     */
+    public function getFeaturesForActivation(FeatureIds $featureIds): Features
+    {
+        return Features::fromArray(array_map($this->buildFeatureFromDefinition(...), $this->expandWithInactiveDependencies($featureIds)));
+    }
+
+    /**
+     * Activates the given features and, transitively, their inactive dependencies in one batch (dependencies first).
+     *
+     * Features that are already active are skipped silently. Processing stops at the first feature that fails to
+     * activate; features activated up to that point remain active. Caches are flushed once at the end of the
+     * batch, and only if at least one feature was actually activated.
+     *
+     * @param array<string, array<mixed>> $optionsByFeatureId options for the configurable features of the batch, indexed by feature id
+     */
+    public function activateFeatures(FeatureIds $featureIds, array $optionsByFeatureId = []): BatchActivateResult
+    {
+        $skipped = [];
+        foreach ($featureIds as $featureId) {
+            if ($this->getFeatureState($featureId)?->active === true) {
+                $skipped[] = $featureId;
+            }
+        }
+        $activated = [];
+        $failedFeatureId = null;
+        $failureMessage = null;
+        foreach ($this->expandWithInactiveDependencies($featureIds) as $featureDefinition) {
+            try {
+                $this->performActivation($featureDefinition->id, $optionsByFeatureId[$featureDefinition->id->value] ?? []);
+            } catch (Throwable $exception) {
+                $failedFeatureId = $featureDefinition->id;
+                $failureMessage = $exception->getMessage();
+                break;
+            }
+            $activated[] = $featureDefinition->id;
+        }
+        if ($activated !== []) {
+            $this->forFlushingCaches->flushCaches();
+        }
+        if ($failedFeatureId !== null && $failureMessage !== null) {
+            return BatchActivateResult::failure(FeatureIds::fromArray($activated), FeatureIds::fromArray($skipped), $failedFeatureId, $failureMessage);
+        }
+        return BatchActivateResult::success(FeatureIds::fromArray($activated), FeatureIds::fromArray($skipped));
+    }
+
+    /**
+     * @param array<mixed> $options
+     */
+    private function performActivation(FeatureId $featureId, array $options): void
+    {
         $featureDefinition = $this->requireDefinition($featureId, 1779121538);
         if ($this->getFeatureState($featureId)?->active === true) {
             throw FeatureStateConflict::cannotActivateBecauseAlreadyActive($featureId);
@@ -78,6 +141,43 @@ final class FeatureSystem
         ($featureDefinition->onActivate)($this->featureContext, $featureOptions);
 
         $this->storeAndInvalidate(new FeatureState($featureId, true, $this->normalizeOptions($featureOptions)));
+    }
+
+    /**
+     * Resolves the definitions of the given features (unless they are already active) plus, transitively, those of
+     * their inactive dependencies, in activation order: every feature comes after all of its dependencies.
+     *
+     * @return list<FeatureDefinition<FeatureOptions>>
+     */
+    private function expandWithInactiveDependencies(FeatureIds $featureIds): array
+    {
+        $definitions = [];
+        $visited = [];
+        $visiting = [];
+        $visit = function (FeatureId $featureId) use (&$visit, &$definitions, &$visited, &$visiting): void {
+            if (isset($visited[$featureId->value])) {
+                return;
+            }
+            if (isset($visiting[$featureId->value])) {
+                throw new RuntimeException(sprintf('Cyclic feature dependency detected involving feature "%s"', $featureId->value), 1782032010);
+            }
+            if ($this->getFeatureState($featureId)?->active === true) {
+                $visited[$featureId->value] = true;
+                return;
+            }
+            $visiting[$featureId->value] = true;
+            $featureDefinition = $this->requireDefinition($featureId, 1782032011);
+            foreach ($featureDefinition->dependsOn as $dependencyId) {
+                $visit($dependencyId);
+            }
+            unset($visiting[$featureId->value]);
+            $visited[$featureId->value] = true;
+            $definitions[] = $featureDefinition;
+        };
+        foreach ($featureIds as $featureId) {
+            $visit($featureId);
+        }
+        return $definitions;
     }
 
     /**
@@ -103,6 +203,7 @@ final class FeatureSystem
         $onUpdateOptions($this->featureContext, $previousFeatureOptions, $newFeatureOptions);
 
         $this->storeAndInvalidate(new FeatureState($featureId, true, $this->normalizeOptions($newFeatureOptions)));
+        $this->forFlushingCaches->flushCaches();
     }
 
     public function deactivateFeature(FeatureId $featureId, bool $removeState = false): void
@@ -128,6 +229,7 @@ final class FeatureSystem
         } else {
             $this->storeAndInvalidate($currentState->with(active: false));
         }
+        $this->forFlushingCaches->flushCaches();
     }
 
     /**

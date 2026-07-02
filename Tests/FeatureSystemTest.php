@@ -13,6 +13,7 @@ use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDependencyViolation;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
+use Wwwision\Neos\Features\Model\Feature\FeatureIds;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\FeatureStateConflict;
 use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
@@ -24,16 +25,19 @@ use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
 use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureConfiguration;
 use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureStates;
 use Wwwision\Neos\Features\Tests\Fixtures\SampleFeatureOptions;
+use Wwwision\Neos\Features\Tests\Fixtures\SpyCacheFlusher;
 use Wwwision\Types\Exception\CoerceException;
 
 #[CoversClass(FeatureSystem::class)]
 final class FeatureSystemTest extends TestCase
 {
     private InMemoryFeatureStates $states;
+    private SpyCacheFlusher $cacheFlusher;
 
     protected function setUp(): void
     {
         $this->states = new InMemoryFeatureStates();
+        $this->cacheFlusher = new SpyCacheFlusher();
     }
 
     /**
@@ -45,6 +49,7 @@ final class FeatureSystemTest extends TestCase
             new InMemoryFeatureConfiguration(FeatureDefinitions::fromArray($definitions)),
             $this->states,
             new FeatureContext(new YamlConfigurationFile('/dev/null'), new YamlConfigurationFile('/dev/null'), []),
+            $this->cacheFlusher,
         );
     }
 
@@ -551,5 +556,271 @@ final class FeatureSystemTest extends TestCase
 
         $this->expectException(FeatureStateConflict::class);
         $system->updateFeatureOptions(FeatureId::fromString('a'), []);
+    }
+
+    // ------------------------ cache flushing ------------------------
+
+    public function test_activateFeature_flushes_caches_once(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $system->activateFeature(FeatureId::fromString('a'), ['message' => 'go']);
+
+        self::assertSame(1, $this->cacheFlusher->flushCount);
+    }
+
+    public function test_activateFeature_does_not_flush_caches_when_blocked_by_a_dependency(): void
+    {
+        $system = $this->featureSystem([self::definition('a'), self::optionlessDefinition('b', dependsOn: ['a'])]);
+
+        try {
+            $system->activateFeature(FeatureId::fromString('b'), []);
+        } catch (FeatureDependencyViolation) {
+        }
+
+        self::assertSame(0, $this->cacheFlusher->flushCount);
+    }
+
+    public function test_deactivateFeature_flushes_caches_once(): void
+    {
+        $this->markActive('a');
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $system->deactivateFeature(FeatureId::fromString('a'), removeState: true);
+
+        self::assertSame(1, $this->cacheFlusher->flushCount);
+    }
+
+    public function test_deactivateFeature_does_not_flush_caches_when_already_inactive(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        try {
+            $system->deactivateFeature(FeatureId::fromString('a'));
+        } catch (FeatureStateConflict) {
+        }
+
+        self::assertSame(0, $this->cacheFlusher->flushCount);
+    }
+
+    public function test_updateFeatureOptions_flushes_caches_once(): void
+    {
+        $this->markActive('a');
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new']);
+
+        self::assertSame(1, $this->cacheFlusher->flushCount);
+    }
+
+    public function test_updateFeatureOptions_does_not_flush_caches_when_inactive(): void
+    {
+        $system = $this->featureSystem([self::definition('a')]);
+
+        try {
+            $system->updateFeatureOptions(FeatureId::fromString('a'), ['message' => 'new']);
+        } catch (FeatureStateConflict) {
+        }
+
+        self::assertSame(0, $this->cacheFlusher->flushCount);
+    }
+
+    // ------------------------ batch activation ------------------------
+
+    /**
+     * @param list<string> $featureIds
+     */
+    private static function featureIds(array $featureIds): FeatureIds
+    {
+        return FeatureIds::fromArray($featureIds);
+    }
+
+    public function test_activateFeatures_activates_all_requested_features(): void
+    {
+        $system = $this->featureSystem([self::optionlessDefinition('a'), self::optionlessDefinition('b')]);
+
+        $result = $system->activateFeatures(self::featureIds(['a', 'b']));
+
+        self::assertSame(['a', 'b'], $result->activated->toStringArray());
+        self::assertFalse($result->hasFailure());
+        self::assertTrue($this->states->loadAll()->get(FeatureId::fromString('a'))?->active);
+        self::assertTrue($this->states->loadAll()->get(FeatureId::fromString('b'))?->active);
+    }
+
+    public function test_activateFeatures_activates_dependencies_before_their_dependents(): void
+    {
+        $activationOrder = [];
+        $recordingActivate = function (string $id) use (&$activationOrder): callable {
+            return static function () use ($id, &$activationOrder): FeatureActivateResult {
+                $activationOrder[] = $id;
+                return FeatureActivateResult::success();
+            };
+        };
+        $system = $this->featureSystem([
+            self::optionlessDefinition('c', onActivate: $recordingActivate('c'), dependsOn: ['b']),
+            self::optionlessDefinition('a', onActivate: $recordingActivate('a')),
+            self::optionlessDefinition('b', onActivate: $recordingActivate('b'), dependsOn: ['a']),
+        ]);
+
+        $result = $system->activateFeatures(self::featureIds(['c', 'a']));
+
+        self::assertSame(['a', 'b', 'c'], $activationOrder);
+        self::assertFalse($result->hasFailure());
+    }
+
+    public function test_activateFeatures_includes_inactive_dependencies_that_were_not_requested(): void
+    {
+        $system = $this->featureSystem([self::optionlessDefinition('a'), self::optionlessDefinition('b', dependsOn: ['a'])]);
+
+        $result = $system->activateFeatures(self::featureIds(['b']));
+
+        self::assertSame(['a', 'b'], $result->activated->toStringArray());
+    }
+
+    public function test_activateFeatures_skips_features_that_are_already_active(): void
+    {
+        $this->markActive('a');
+        $system = $this->featureSystem([self::definition('a'), self::optionlessDefinition('b')]);
+
+        $result = $system->activateFeatures(self::featureIds(['a', 'b']));
+
+        self::assertSame(['b'], $result->activated->toStringArray());
+        self::assertSame(['a'], $result->skipped->toStringArray());
+        self::assertFalse($result->hasFailure());
+    }
+
+    public function test_activateFeatures_does_not_activate_dependencies_that_are_already_active(): void
+    {
+        $this->markActive('a');
+        $activated = false;
+        $system = $this->featureSystem([
+            self::definition('a', onActivate: function () use (&$activated): FeatureActivateResult {
+                $activated = true;
+                return FeatureActivateResult::success();
+            }),
+            self::optionlessDefinition('b', dependsOn: ['a']),
+        ]);
+
+        $result = $system->activateFeatures(self::featureIds(['b']));
+
+        self::assertFalse($activated);
+        self::assertSame(['b'], $result->activated->toStringArray());
+    }
+
+    public function test_activateFeatures_passes_the_options_to_the_corresponding_feature(): void
+    {
+        $activatedWith = null;
+        $system = $this->featureSystem([
+            self::definition('a', onActivate: function (FeatureContext $context, FeatureOptions $options) use (&$activatedWith): FeatureActivateResult {
+                $activatedWith = $options;
+                return FeatureActivateResult::success();
+            }),
+            self::optionlessDefinition('b'),
+        ]);
+
+        $system->activateFeatures(self::featureIds(['a', 'b']), ['a' => ['message' => 'go', 'threshold' => 9]]);
+
+        self::assertInstanceOf(SampleFeatureOptions::class, $activatedWith);
+        self::assertSame('go', $activatedWith->message);
+        self::assertSame(9, $activatedWith->threshold);
+    }
+
+    public function test_activateFeatures_stops_at_the_first_failure_and_keeps_previous_activations(): void
+    {
+        $system = $this->featureSystem([
+            self::optionlessDefinition('a'),
+            self::optionlessDefinition('b', onActivate: static fn(): FeatureActivateResult => throw new \RuntimeException('activation failed')),
+            self::optionlessDefinition('c'),
+        ]);
+
+        $result = $system->activateFeatures(self::featureIds(['a', 'b', 'c']));
+
+        self::assertSame(['a'], $result->activated->toStringArray());
+        self::assertTrue($result->hasFailure());
+        self::assertSame('b', $result->failedFeatureId?->value);
+        self::assertSame('activation failed', $result->failureMessage);
+        self::assertTrue($this->states->loadAll()->get(FeatureId::fromString('a'))?->active);
+        self::assertNull($this->states->loadAll()->get(FeatureId::fromString('b')));
+        self::assertNull($this->states->loadAll()->get(FeatureId::fromString('c')));
+    }
+
+    public function test_activateFeatures_flushes_caches_only_once(): void
+    {
+        $system = $this->featureSystem([self::optionlessDefinition('a'), self::optionlessDefinition('b'), self::optionlessDefinition('c')]);
+
+        $system->activateFeatures(self::featureIds(['a', 'b', 'c']));
+
+        self::assertSame(1, $this->cacheFlusher->flushCount);
+    }
+
+    public function test_activateFeatures_flushes_caches_once_even_when_a_later_feature_fails(): void
+    {
+        $system = $this->featureSystem([
+            self::optionlessDefinition('a'),
+            self::optionlessDefinition('b', onActivate: static fn(): FeatureActivateResult => throw new \RuntimeException('activation failed')),
+        ]);
+
+        $system->activateFeatures(self::featureIds(['a', 'b']));
+
+        self::assertSame(1, $this->cacheFlusher->flushCount);
+    }
+
+    public function test_activateFeatures_does_not_flush_caches_when_no_feature_was_activated(): void
+    {
+        $this->markActive('a');
+        $system = $this->featureSystem([self::definition('a')]);
+
+        $result = $system->activateFeatures(self::featureIds(['a']));
+
+        self::assertSame([], $result->activated->toStringArray());
+        self::assertSame(0, $this->cacheFlusher->flushCount);
+    }
+
+    public function test_activateFeatures_throws_for_an_unknown_feature(): void
+    {
+        $system = $this->featureSystem([self::optionlessDefinition('a')]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $system->activateFeatures(self::featureIds(['a', 'missing']));
+    }
+
+    public function test_activateFeatures_throws_for_cyclic_dependencies(): void
+    {
+        $system = $this->featureSystem([
+            self::optionlessDefinition('a', dependsOn: ['b']),
+            self::optionlessDefinition('b', dependsOn: ['a']),
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/Cyclic feature dependency/');
+        $system->activateFeatures(self::featureIds(['a']));
+    }
+
+    public function test_getFeaturesForActivation_returns_the_expanded_selection_in_activation_order(): void
+    {
+        $system = $this->featureSystem([
+            self::optionlessDefinition('a'),
+            self::optionlessDefinition('b', dependsOn: ['a']),
+            self::optionlessDefinition('c', dependsOn: ['b']),
+        ]);
+
+        $features = $system->getFeaturesForActivation(FeatureIds::fromArray(['c']));
+
+        $ids = array_map(static fn(Feature $f): string => $f->id->value, iterator_to_array($features));
+        self::assertSame(['a', 'b', 'c'], $ids);
+    }
+
+    public function test_getFeaturesForActivation_excludes_features_that_are_already_active(): void
+    {
+        $this->markActive('a');
+        $system = $this->featureSystem([
+            self::definition('a'),
+            self::optionlessDefinition('b', dependsOn: ['a']),
+        ]);
+
+        $features = $system->getFeaturesForActivation(FeatureIds::fromArray(['a', 'b']));
+
+        $ids = array_map(static fn(Feature $f): string => $f->id->value, iterator_to_array($features));
+        self::assertSame(['b'], $ids);
     }
 }
