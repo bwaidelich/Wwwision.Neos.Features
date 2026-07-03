@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Wwwision\Neos\Features\Tests\Adapter;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Wwwision\Neos\Features\Adapter\ForStoringFeatureStatesViaYaml;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
+use Wwwision\Neos\Features\Model\FeatureState\FeatureStates;
 
 #[CoversClass(ForStoringFeatureStatesViaYaml::class)]
+#[UsesClass(FeatureId::class)]
+#[UsesClass(FeatureState::class)]
+#[UsesClass(FeatureStates::class)]
 final class ForStoringFeatureStatesViaYamlTest extends TestCase
 {
     private string $yamlPath;

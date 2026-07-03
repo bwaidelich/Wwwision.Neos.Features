@@ -5,7 +5,7 @@
       <directory>Tests</directory>
     </testsuite>
   </testsuites>
-  <coverage includeUncoveredFiles="false"/>
+  <coverage includeUncoveredFiles="true"/>
   <source restrictNotices="true" restrictWarnings="true" ignoreIndirectDeprecations="true">
     <include>
       <directory>Classes</directory>

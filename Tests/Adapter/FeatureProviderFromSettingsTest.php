@@ -7,14 +7,37 @@ namespace Wwwision\Neos\Features\Tests\Adapter;
 use InvalidArgumentException;
 use Neos\Flow\ObjectManagement\ObjectManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Wwwision\Neos\Features\Adapter\FeatureProviderFromSettings;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
+use Wwwision\Neos\Features\Model\Feature\FeatureIds;
+use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
+use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinitions;
+use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDescription;
+use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureName;
+use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroup;
+use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupDescription;
+use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupIcon;
 use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupId;
+use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroupName;
+use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroups;
 use Wwwision\Neos\Features\Tests\Fixtures\SampleFeatureFactory;
 
 #[CoversClass(FeatureProviderFromSettings::class)]
+#[UsesClass(FeatureDefinition::class)]
+#[UsesClass(FeatureDefinitions::class)]
+#[UsesClass(FeatureDescription::class)]
+#[UsesClass(FeatureGroup::class)]
+#[UsesClass(FeatureGroupDescription::class)]
+#[UsesClass(FeatureGroupIcon::class)]
+#[UsesClass(FeatureGroupId::class)]
+#[UsesClass(FeatureGroupName::class)]
+#[UsesClass(FeatureGroups::class)]
+#[UsesClass(FeatureId::class)]
+#[UsesClass(FeatureIds::class)]
+#[UsesClass(FeatureName::class)]
 final class FeatureProviderFromSettingsTest extends TestCase
 {
     /**

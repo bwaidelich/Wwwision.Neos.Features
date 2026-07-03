@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Wwwision\Neos\Features\Tests\Model\FeatureState;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
 
 #[CoversClass(FeatureState::class)]
+#[UsesClass(FeatureId::class)]
 final class FeatureStateTest extends TestCase
 {
     public function test_it_exposes_the_constructor_values(): void

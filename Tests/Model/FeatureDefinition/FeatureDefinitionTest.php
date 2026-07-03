@@ -6,10 +6,12 @@ namespace Wwwision\Neos\Features\Tests\Model\FeatureDefinition;
 
 use LogicException;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
+use Wwwision\Neos\Features\Model\Feature\FeatureIds;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
 use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
@@ -21,6 +23,16 @@ use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext;
 use Wwwision\Neos\Features\Tests\Fixtures\SampleFeatureOptions;
 
 #[CoversClass(FeatureDefinition::class)]
+#[UsesClass(FeatureActivateResult::class)]
+#[UsesClass(FeatureContext::class)]
+#[UsesClass(FeatureDeactivateResult::class)]
+#[UsesClass(FeatureDescription::class)]
+#[UsesClass(FeatureIcon::class)]
+#[UsesClass(FeatureId::class)]
+#[UsesClass(FeatureIds::class)]
+#[UsesClass(FeatureName::class)]
+#[UsesClass(FeatureUpdateOptionsResult::class)]
+#[UsesClass(YamlConfigurationFile::class)]
 final class FeatureDefinitionTest extends TestCase
 {
     private static function context(): FeatureContext

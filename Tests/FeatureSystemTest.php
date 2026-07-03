@@ -6,8 +6,10 @@ namespace Wwwision\Neos\Features\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Wwwision\Neos\Features\FeatureSystem;
+use Wwwision\Neos\Features\Model\Feature\BatchActivateResult;
 use Wwwision\Neos\Features\Model\Feature\Feature;
 use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
 use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
@@ -15,13 +17,18 @@ use Wwwision\Neos\Features\Model\Feature\FeatureDependencyViolation;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\Feature\FeatureIds;
 use Wwwision\Neos\Features\Model\Feature\FeatureOptions;
+use Wwwision\Neos\Features\Model\Feature\Features;
 use Wwwision\Neos\Features\Model\Feature\FeatureStateConflict;
 use Wwwision\Neos\Features\Model\Feature\FeatureUpdateOptionsResult;
 use Wwwision\Neos\Features\Model\CommonFeatures\YamlConfigurationFile;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinition;
 use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDefinitions;
+use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureDescription;
+use Wwwision\Neos\Features\Model\FeatureDefinition\FeatureName;
+use Wwwision\Neos\Features\Model\FeatureGroup\FeatureGroups;
 use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
+use Wwwision\Neos\Features\Model\FeatureState\FeatureStates;
 use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureConfiguration;
 use Wwwision\Neos\Features\Tests\Fixtures\InMemoryFeatureStates;
 use Wwwision\Neos\Features\Tests\Fixtures\SampleFeatureOptions;
@@ -29,6 +36,25 @@ use Wwwision\Neos\Features\Tests\Fixtures\SpyCacheFlusher;
 use Wwwision\Types\Exception\CoerceException;
 
 #[CoversClass(FeatureSystem::class)]
+#[UsesClass(BatchActivateResult::class)]
+#[UsesClass(Feature::class)]
+#[UsesClass(FeatureActivateResult::class)]
+#[UsesClass(FeatureContext::class)]
+#[UsesClass(FeatureDeactivateResult::class)]
+#[UsesClass(FeatureDefinition::class)]
+#[UsesClass(FeatureDefinitions::class)]
+#[UsesClass(FeatureDependencyViolation::class)]
+#[UsesClass(FeatureDescription::class)]
+#[UsesClass(FeatureGroups::class)]
+#[UsesClass(FeatureId::class)]
+#[UsesClass(FeatureIds::class)]
+#[UsesClass(FeatureName::class)]
+#[UsesClass(FeatureState::class)]
+#[UsesClass(FeatureStateConflict::class)]
+#[UsesClass(FeatureStates::class)]
+#[UsesClass(FeatureUpdateOptionsResult::class)]
+#[UsesClass(Features::class)]
+#[UsesClass(YamlConfigurationFile::class)]
 final class FeatureSystemTest extends TestCase
 {
     private InMemoryFeatureStates $states;

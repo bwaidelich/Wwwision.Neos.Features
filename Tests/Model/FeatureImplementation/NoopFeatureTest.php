@@ -5,13 +5,20 @@ declare(strict_types=1);
 namespace Wwwision\Neos\Features\Tests\Model\FeatureImplementation;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Wwwision\Neos\Features\Model\CommonFeatures\YamlConfigurationFile;
+use Wwwision\Neos\Features\Model\Feature\FeatureActivateResult;
+use Wwwision\Neos\Features\Model\Feature\FeatureDeactivateResult;
 use Wwwision\Neos\Features\Model\FeatureImplementation\FeatureContext;
 use Wwwision\Neos\Features\Model\FeatureImplementation\NoopFeature;
 use Wwwision\Neos\Features\Model\FeatureImplementation\OptionlessFeatureImplementation;
 
 #[CoversClass(NoopFeature::class)]
+#[UsesClass(FeatureActivateResult::class)]
+#[UsesClass(FeatureContext::class)]
+#[UsesClass(FeatureDeactivateResult::class)]
+#[UsesClass(YamlConfigurationFile::class)]
 final class NoopFeatureTest extends TestCase
 {
     private function context(): FeatureContext

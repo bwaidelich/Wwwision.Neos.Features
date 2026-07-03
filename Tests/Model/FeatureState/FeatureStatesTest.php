@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Wwwision\Neos\Features\Tests\Model\FeatureState;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Wwwision\Neos\Features\Model\Feature\FeatureId;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureState;
 use Wwwision\Neos\Features\Model\FeatureState\FeatureStates;
 
 #[CoversClass(FeatureStates::class)]
+#[UsesClass(FeatureId::class)]
+#[UsesClass(FeatureState::class)]
 final class FeatureStatesTest extends TestCase
 {
     public function test_get_returns_the_state_matching_the_given_id(): void
