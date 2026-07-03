@@ -38,7 +38,7 @@ final readonly class ActivateNodeTypeFeatureFactory implements FeatureImplementa
         } else {
             Assert::isArray($options['nodeTypes'], 'ActivateNodeTypeFeature option "nodeTypes" must be an array, given: %s');
             Assert::allString($options['nodeTypes'], 'ActivateNodeTypeFeature option "nodeTypes" must be a list of strings, given: %s');
-            $nodeTypeNames = array_map(NodeTypeName::fromString(...), $options['nodeTypes']);
+            $nodeTypeNames = array_values(array_map(NodeTypeName::fromString(...), $options['nodeTypes']));
         }
 
         return new ActivateNodeTypeFeature($nodeTypeNames);

@@ -1,6 +1,6 @@
 Wwwision.Neos.Features.FeaturesModuleController.batchActivateForm = NeosBE:Module {
   content = afx`
-    <Neos.Fusion.Form:Form attributes.id="form-batch-activate" form.data.options={optionsByFeatureId} form.enableReferrer={false} form.enableTrustedProperties={false} form.target.action="batchActivate">
+    <Neos.Fusion.Form:Form attributes.id="form-activate" form.data.options={optionsByFeatureId} form.enableReferrer={false} form.target.action="batchActivate">
       <p>Die folgenden Features werden aktiviert (Abhängigkeiten wurden automatisch ergänzt):</p>
       <Neos.Fusion:Loop items={features} itemName="feature">
         <Neos.Fusion.Form:Hidden field.name="featureIds" field.multiple={true} field.value={feature.id.value} />
@@ -19,6 +19,6 @@ Wwwision.Neos.Features.FeaturesModuleController.batchActivateForm = NeosBE:Modul
 
   footer = afx`
     <NeosBE:Button content="Abbrechen" icon="backward" action="index" />
-    <NeosBE:Button form="form-batch-activate" isSuccess={true} content="Features aktivieren" icon="toggle-off" />
+    <NeosBE:Button form="form-activate" isSuccess={true} content="Features aktivieren" icon="toggle-off" />
   `
 }

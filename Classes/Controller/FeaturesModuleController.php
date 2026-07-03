@@ -116,7 +116,7 @@ final class FeaturesModuleController extends AbstractModuleController
      * Renders the combined activation form for the given selection of features, expanded (server-side) with all
      * inactive features they transitively depend on.
      *
-     * @param array $featureIds
+     * @param string[] $featureIds
      */
     public function batchActivateFormAction(array $featureIds = []): void
     {
@@ -143,7 +143,7 @@ final class FeaturesModuleController extends AbstractModuleController
 
     /**
      * @param string[] $featureIds
-     * @param array $options options per feature, indexed by feature id
+     * @param array<string, array<string, mixed>> $options options per feature, indexed by feature id
      */
     public function batchActivateAction(array $featureIds = [], array $options = []): void
     {

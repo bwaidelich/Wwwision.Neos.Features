@@ -1,73 +1,72 @@
 Wwwision.Neos.Features.FeaturesModuleController.index = NeosBE:Module {
   content = afx`
-    <Neos.Fusion.Form:Form attributes.id="form-batch-activate" form.target.action="batchActivateForm" form.enableReferrer={false} form.enableTrustedProperties={false} />
-    <NeosBE:Table>
-      <NeosBE:Table.Head>
-        <NeosBE:Table.Row>
-          <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
-          <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
-          <NeosBE:Table.HeaderCell attributes.style="width: 20em" />
-          <NeosBE:Table.HeaderCell attributes.style="width: 9em" />
-          <NeosBE:Table.HeaderCell />
-          <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
-        </NeosBE:Table.Row>
-      </NeosBE:Table.Head>
-      <Neos.Fusion:Loop items={sections} itemName="section">
-        <NeosBE:Table.FolderRow>
-          <NeosBE:Table.Cell attributes.title="Alle Features dieser Gruppe für Batch-Aktivierung auswählen">
-            <input @if={section.hasInactiveFeatures} type="checkbox" data-select-group={"feature_group_" + section.group.id} />
-          </NeosBE:Table.Cell>
-          <NeosBE:Table.Cell>
-            <NeosBE:Icon icon={section.group.icon ? section.group.icon : 'cube'} />
-          </NeosBE:Table.Cell>
-          <NeosBE:Table.Cell attributes.colspan="3">
-            {section.group ? section.group.name : 'Sonstige'}
-            <small @if={section.group.description}>
-                &nbsp;–&nbsp;{String.nl2br(section.group.description)}
-            </small>
-          </NeosBE:Table.Cell>
-          <NeosBE:Table.ActionCell>
-            <NeosBE:ToggleButton target={"feature_group_" + section.group.id}/>
-          </NeosBE:Table.ActionCell>
-        </NeosBE:Table.FolderRow>
-        <tbody id={"feature_group_" + section.group.id} style="border:none">
+    <Neos.Fusion.Form:Form attributes.id="form-batch-activate" form.target.action="batchActivateForm" form.enableReferrer={false}>
+      <NeosBE:Table>
+        <NeosBE:Table.Head>
           <NeosBE:Table.Row>
-            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
-            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
-            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Feature"/>
-            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Status"/>
-            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Beschreibung"/>
-            <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
+            <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
+            <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
+            <NeosBE:Table.HeaderCell attributes.style="width: 20em" />
+            <NeosBE:Table.HeaderCell attributes.style="width: 9em" />
+            <NeosBE:Table.HeaderCell />
+            <NeosBE:Table.HeaderCell attributes.style="width: 1em" />
           </NeosBE:Table.Row>
-          <Neos.Fusion:Loop items={section.features} itemName="feature">
-            <NeosBE:Table.ClickableRow target.action="show" target.arguments={{featureId: feature.id.value}}>
-              <NeosBE:Table.Cell attributes.onclick="event.stopPropagation()" attributes.title="Für Batch-Aktivierung auswählen">
-                <input @if={!feature.active} type="checkbox" form="form-batch-activate" name={String.isBlank(request.argumentNamespace) ? 'featureIds[]' : request.argumentNamespace + '[featureIds][]'} value={feature.id.value} data-feature-select="1" data-depends-on={feature.dependsOn} />
-              </NeosBE:Table.Cell>
-              <NeosBE:Table.Cell>
-                <NeosBE:Icon icon={feature.icon ? feature.icon : 'cube'} />
-              </NeosBE:Table.Cell>
-              <NeosBE:Table.Cell attributes.title={"ID: " + feature.id.value}>
-                {feature.name}
-              </NeosBE:Table.Cell>
-              <NeosBE:Table.Cell>
-                <Wwwision.Neos.Features:FeatureStateBadge active={feature.active} />
-              </NeosBE:Table.Cell>
-              <NeosBE:Table.Cell>
-                {String.cropAtWord(feature.description, 50, '...')}
-              </NeosBE:Table.Cell>
-              <NeosBE:Table.ActionCell>
-                <Wwwision.Neos.Features:ActivateControl @if={feature.activatable} feature={feature} />
-                <NeosBE:Button @if={!feature.active && !feature.activatable} icon="toggle-off" attributes.disabled="disabled" attributes.title={'Zuerst aktivieren: ' + feature.unmetDependencies}/>
-                <NeosBE:Button @if={feature.deactivatable} icon="toggle-on" action="deactivateForm" arguments={{featureId: feature.id.value}}/>
-                <NeosBE:Button @if={feature.active && !feature.deactivatable} icon="toggle-on" attributes.disabled="disabled" attributes.title={'Wird benötigt von: ' + feature.activeDependents}/>
-              </NeosBE:Table.ActionCell>
-            </NeosBE:Table.ClickableRow>
-          </Neos.Fusion:Loop>
-        </tbody>
-      </Neos.Fusion:Loop>
-    </NeosBE:Table>
-    <script defer src={StaticResource.uri('Wwwision.Neos.Features', 'Public/JavaScript/BatchActivation.js')}></script>
+        </NeosBE:Table.Head>
+        <Neos.Fusion:Loop items={sections} itemName="section">
+          <NeosBE:Table.FolderRow>
+            <NeosBE:Table.Cell>
+              <NeosBE:Icon icon={section.group.icon ? section.group.icon : 'cube'} />
+            </NeosBE:Table.Cell>
+            <NeosBE:Table.Cell attributes.colspan="4">
+              {section.group ? section.group.name : 'Sonstige'}
+              <small @if={section.group.description}>
+                  &nbsp;–&nbsp;{String.nl2br(section.group.description)}
+              </small>
+            </NeosBE:Table.Cell>
+            <NeosBE:Table.ActionCell>
+              <NeosBE:ToggleButton target={"feature_group_" + section.group.id}/>
+            </NeosBE:Table.ActionCell>
+          </NeosBE:Table.FolderRow>
+          <tbody id={"feature_group_" + section.group.id} style="border:none">
+            <NeosBE:Table.Row>
+              <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" attributes.title="Alle Features dieser Gruppe für Batch-Aktivierung auswählen">
+                <input @if={section.hasInactiveFeatures} type="checkbox" data-select-group={"feature_group_" + section.group.id} />
+              </NeosBE:Table.HeaderCell>
+              <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
+              <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Feature"/>
+              <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Status"/>
+              <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" content="Beschreibung"/>
+              <NeosBE:Table.HeaderCell attributes.style="background: #323232;border-bottom:2px solid #505050" />
+            </NeosBE:Table.Row>
+            <Neos.Fusion:Loop items={section.features} itemName="feature">
+              <NeosBE:Table.ClickableRow target.action="show" target.arguments={{featureId: feature.id.value}}>
+                <NeosBE:Table.Cell attributes.onclick="event.stopPropagation()" attributes.title="Für Batch-Aktivierung auswählen">
+                  <input @if={!feature.active} type="checkbox" form="form-batch-activate" name={String.isBlank(request.argumentNamespace) ? 'featureIds[]' : request.argumentNamespace + '[featureIds][]'} value={feature.id.value} data-feature-select="1" data-depends-on={feature.dependsOn} />
+                </NeosBE:Table.Cell>
+                <NeosBE:Table.Cell>
+                  <NeosBE:Icon icon={feature.icon ? feature.icon : 'cube'} />
+                </NeosBE:Table.Cell>
+                <NeosBE:Table.Cell attributes.title={"ID: " + feature.id.value}>
+                  {feature.name}
+                </NeosBE:Table.Cell>
+                <NeosBE:Table.Cell>
+                  <Wwwision.Neos.Features:FeatureStateBadge active={feature.active} />
+                </NeosBE:Table.Cell>
+                <NeosBE:Table.Cell>
+                  {String.cropAtWord(feature.description, 50, '...')}
+                </NeosBE:Table.Cell>
+                <NeosBE:Table.ActionCell>
+                  <Wwwision.Neos.Features:ActivateControl @if={feature.activatable} feature={feature} />
+                  <NeosBE:Button @if={!feature.active && !feature.activatable} icon="toggle-off" attributes.disabled="disabled" attributes.title={'Zuerst aktivieren: ' + feature.unmetDependencies}/>
+                  <NeosBE:Button @if={feature.deactivatable} icon="toggle-on" action="deactivateForm" arguments={{featureId: feature.id.value}}/>
+                  <NeosBE:Button @if={feature.active && !feature.deactivatable} icon="toggle-on" attributes.disabled="disabled" attributes.title={'Wird benötigt von: ' + feature.activeDependents}/>
+                </NeosBE:Table.ActionCell>
+              </NeosBE:Table.ClickableRow>
+            </Neos.Fusion:Loop>
+          </tbody>
+        </Neos.Fusion:Loop>
+      </NeosBE:Table>
+    </Neos.Fusion.Form:Form>
   `
 
   footer = afx`

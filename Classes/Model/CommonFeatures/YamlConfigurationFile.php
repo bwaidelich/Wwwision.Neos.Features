@@ -102,7 +102,7 @@ final readonly class YamlConfigurationFile
             $data[$key] = $value;
             return;
         }
-        if (!isset($data[$key]) || !is_array($data[$key])) {
+        if (!isset($data[$key]) || !self::isMap($data[$key])) {
             $data[$key] = [];
         }
         self::setNested($data[$key], $keyPath, $value);
@@ -119,12 +119,20 @@ final readonly class YamlConfigurationFile
             unset($data[$key]);
             return;
         }
-        if (!isset($data[$key]) || !is_array($data[$key])) {
+        if (!isset($data[$key]) || !self::isMap($data[$key])) {
             return;
         }
         self::unsetNested($data[$key], $keyPath);
         if ($data[$key] === []) {
             unset($data[$key]);
         }
+    }
+
+    /**
+     * @phpstan-assert-if-true array<string, mixed> $value
+     */
+    private static function isMap(mixed $value): bool
+    {
+        return is_array($value) && array_all($value, static fn(mixed $v, mixed $key): bool => is_string($key));
     }
 }
