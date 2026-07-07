@@ -5,7 +5,7 @@ Wwwision.Neos.Features.FeaturesModuleController.batchActivateForm = NeosBE:Modul
       <Neos.Fusion:Loop items={features} itemName="feature">
         <Neos.Fusion.Form:Hidden field.name="featureIds" field.multiple={true} field.value={feature.id.value} />
         <fieldset>
-          <legend>
+          <legend title={feature.id}>
             <NeosBE:Icon icon={feature.icon ? feature.icon : 'cube'} />
             &nbsp;{feature.name}&nbsp;
             <NeosBE:Badge @if={Array.indexOf(requestedFeatureIds, feature.id.value) == -1}>Abhängigkeit – automatisch ergänzt</NeosBE:Badge>
