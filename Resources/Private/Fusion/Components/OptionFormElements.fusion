@@ -21,7 +21,7 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
         condition = ${optionSchema.type == 'object'}
         renderer = afx`
             <fieldset>
-              <legend>{optionName} <small @if={optionSchema.description}>{String.nl2br(optionSchema.description)}</small></legend>
+              <legend title={optionName}>{String.firstLetterToUpperCase(String.pregReplace(optionName, '/(?<!^)([A-Z])/', ' $1'))} <small>{String.nl2br(Wwwision.Neos.Features.getDescription(private.optionsSchema, optionName))}</small></legend>
               <Wwwision.Neos.Features:OptionFormElements optionsSchema={optionSchema} namespace={props.namespace == null ? optionName : props.namespace + '.' + optionName} rootFieldName={props.rootFieldName} />
             </fieldset>
         `
@@ -30,8 +30,8 @@ prototype(Wwwision.Neos.Features:OptionFormElements) < prototype(Neos.Fusion:Com
         @position = 'end 9999'
         condition = ${true}
         renderer = afx`
-          <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={props.rootFieldName + String.pregReplace(private.fieldNameSuffix + '.' + optionName, '/\.([^.]+)/', '[$1]')} label={String.firstLetterToUpperCase(optionName) + (Wwwision.Neos.Features.isOptionalSchema(optionSchema) ? '' : '*')}>
-            <small @if={props.customDescription || optionSchema.description}>{String.nl2br(props.customDescription || optionSchema.description)}</small>
+          <Neos.Fusion.Form:Neos.BackendModule.FieldContainer field.name={props.rootFieldName + String.pregReplace(private.fieldNameSuffix + '.' + optionName, '/\.([^.]+)/', '[$1]')} label={String.firstLetterToUpperCase(String.pregReplace(optionName, '/(?<!^)([A-Z])/', ' $1')) + (Wwwision.Neos.Features.isOptionalSchema(optionSchema) ? '' : '*')} attributes.title={optionName}>
+            <small @if={optionSchema.description}>{String.nl2br(optionSchema.description)}</small>
             <div class="neos row">
               <Wwwision.Neos.Features:OptionFormElement
                 parentSchema={private.optionsSchema}

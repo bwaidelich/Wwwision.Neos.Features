@@ -21,6 +21,11 @@ final readonly class FeaturesHelper implements ProtectedContextAwareInterface
         return $schema instanceof OptionalSchema ? $schema->wrapped : $schema;
     }
 
+    public function getDescription(Schema $schema, string $propertyName): string|null
+    {
+        return $schema instanceof ShapeSchema ? $schema->overriddenPropertyDescription($propertyName) : null;
+    }
+
     public function getDefaultValue(ShapeSchema $schema, string $propertyName): mixed
     {
         return $schema->hasDefaultValue($propertyName) ? $schema->defaultValue($propertyName) : null;
